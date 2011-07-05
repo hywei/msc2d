@@ -3,7 +3,7 @@
 
 #include <cmath>
 
-namespace MeshLib{
+namespace meshlib{
     /* ================== Enumerations ================== */
 
     typedef enum {SOLID_SMOOTH, SOLID_FLAT, WIREFRAME, SOLID_AND_WIREFRAME, VERTICES, HIGHLIGHT_ONLY, TEXTURE_MAPPING,
@@ -91,6 +91,6 @@ namespace MeshLib{
 
 
 
-} // namespace MeshLib
+} // namespace meshlib
 
 #endif

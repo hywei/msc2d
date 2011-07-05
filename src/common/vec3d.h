@@ -3,7 +3,7 @@
 
 #include <iostream>
 
-namespace MeshLib{
+namespace meshlib{
 
     //================== Vec3Dinate (3D) ================== 
 

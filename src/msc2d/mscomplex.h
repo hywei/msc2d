@@ -5,6 +5,10 @@
 #include <string>
 #include <boost/shared_ptr.hpp>
 
+namespace meshlib{
+  class Mesh;
+}
+
 namespace msc2d{
 
   struct CriticalPointNeighbor {
@@ -23,6 +27,7 @@ namespace msc2d{
     std::vector<CriticalPointNeighbor> neighbor; //neighbors are assumed to be counter-clockwise
   };
   typedef std::vector<CriticalPoint> CriticalPointArray;
+  typedef std::vector<int> PATH;
   struct IntegrationLine{
     int startIndex, endIndex; 
     std::vector<int> quadPatchIndex; //the size should be either 1 or 2
@@ -34,17 +39,28 @@ namespace msc2d{
   class MSComplex2D{
 
  public:
+    MSComplex2D();
+    ~MSComplex2D();
+    
     bool setMesh(const std::string& file_name);
-    bool setMesh(boost::shared_ptr<const meshlib::Mesh> p_mesh);
+    bool setMesh(boost::shared_ptr<meshlib::Mesh> p_mesh);
     bool setScalarField(const std::string& file_name);
     bool setScalarField(const std::vector<double>& sf);
 
-    bool createMSComple2D(double threshold = 0.003);
+    bool checkMeshAndScalarField() const;
+    bool createMSComplex2D(double threshold = 0.003);
+
+    bool loadMSComplex(const std::string& file_name);
+    bool saveMSComplex(const std::string& file_name) const;
 
  private:
-    boost::shared_ptr<const meshlib::Mesh> mesh;
+    boost::shared_ptr<meshlib::Mesh> mesh;
     std::vector<double> scalar_field;
-    
+
+    CriticalPointArray cp_vec;
+    IntegrationLineArray il_vec;
+
+    friend class MscWrapper;
   };
   
 }// end namespace

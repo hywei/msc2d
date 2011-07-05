@@ -5,7 +5,7 @@
 #include <iostream>
 
 
-class Utility
+class Util
 {
 public:
     // string utilities
@@ -15,8 +15,7 @@ public:
 
     // Free various vectors
     template <class T>
-    void FreeVector(T& arr)
-    {
+    static  void FreeVector(T& arr){
         T tmp;
         arr.clear();
         arr.swap(tmp);
@@ -24,17 +23,16 @@ public:
 
     // Flag utilities
     template <class T>
-        void SetFlag(T& flag_ele, T flag) { flag_ele |= flag; }
+        static void SetFlag(T& flag_ele, T flag) { flag_ele |= flag; }
 
     template <class T>
-        void ClearFlag(T& flag_ele, T flag) { flag_ele &= ~flag; }
+        static void ClearFlag(T& flag_ele, T flag) { flag_ele &= ~flag; }
 
     template <class T>
-        bool IsSetFlag(T& flag_ele, T flag) { return ((flag_ele&flag) == flag); }
+        static bool IsSetFlag(const T& flag_ele, T flag) { return ((flag_ele&flag) == flag); }
 
     template <class T>
-        void ToggleFlag(T& flag_ele, T flag)
-        {
+        static void ToggleFlag(T& flag_ele, T flag){
             if(IsSetFlag(flag_ele, flag)) ClearFlag(flag_ele, flag);
             else SetFlag(flag_ele, flag);
         }

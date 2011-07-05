@@ -6,36 +6,36 @@
 
 #include <vector>
 
-namespace MeshLib{
+namespace meshlib{
 
-    class Mesh;
-    class MeshKernel
-    {
-    public:
-        MeshKernel(Mesh& _mesh);
-        ~MeshKernel();
+  class Mesh;
+  class MeshKernel
+  {
+ public:
+ MeshKernel(Mesh& _mesh): mesh(_mesh) {}
+    ~MeshKernel(){}
 
-        //! analysis model info
-        void AnalysisModel();
-        //! create halfedge data structure        
-        bool CreateHalfEdgeDS();
+    //! analysis model info
+    void AnalysisModel();
+    //! create halfedge data structure        
+    bool CreateHalfEdgeDS();        
 
-        std::vector<Vert>& GetVertArray() { return vert_vec; }
-        std::vector<Face>& GetFaceArray() { return face_vec; }
-        std::vector<Edge>& GetEdgeArray() { return edge_vec; }
-        std::vector<HalfEdge>& GetHEArray() { return he_vec; }
+    VertArray& getVertArray() { return vert_vec; }
+    FaceArray& getFaceArray() { return face_vec; }
+    EdgeArray& getEdgeArray() { return edge_vec; }
+    HalfEdgeArray& getHEArray() { return he_vec; }
+
+ private:
+    VertArray vert_vec;
+    FaceArray face_vec;
+    EdgeArray edge_vec;
+    HalfEdgeArray he_vec;        
         
-    private:
-        std::vector<Vert> vert_vec;
-        std::vector<Face> face_vec;
-        std::vector<Edge> edge_vec;
-        std::vector<HalfEdge> he_vec;
+    Mesh& mesh;
 
-        MeshInfo mesh_info;
-        
-        Mesh& mesh;
-
-        friend class MeshIO;
-    };
+    friend class MeshIO;
+    friend class MeshBasicOP;
+    friend class MeshInfo;
+  };
 }
 #endif

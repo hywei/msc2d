@@ -1,7 +1,7 @@
 // HSVColor.cpp: implementation of the CHSVColor class.
 //
 //////////////////////////////////////////////////////////////////////
-#include "HSVColor.h"
+#include "hsvcolor.h"
 #include <math.h>
 
 #ifdef _DEBUG

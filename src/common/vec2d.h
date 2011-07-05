@@ -3,7 +3,7 @@
 
 #include <iostream>
 
-namespace MeshLib{
+namespace meshlib{
 
     /* ================== Coordinate (2D) ================== */
 
@@ -294,5 +294,5 @@ namespace MeshLib{
             return pos[1];
         }
     
-} // namespace MeshLib
+} // namespace meshlib
 #endif

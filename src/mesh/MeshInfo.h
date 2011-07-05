@@ -3,59 +3,59 @@
 
 #include <string>
 #include "../common/types.h"
+#include "MeshElement.h"
 
-namespace MeshLib{
-    class Mesh;
+namespace meshlib{
+  class Mesh;
+  class MeshInfo
+  {
+ public:
+    // Constructor / Destructor
+    MeshInfo(Mesh& _mesh): mesh(_mesh){}
+    ~MeshInfo(){}
     
-    class ModelInfo
-    {
-    public:
-        // Constructor / Destructor
-        ModelInfo(Mesh& _mesh){}
-        ~ModelInfo(){}
+    size_t getVertNum() const { return m_nVertices; }
+    size_t getFaceNum() const { return m_nFaces; }
+    size_t getHalfEdgeNum() const { return m_nHalfEdges; }    
+    size_t getBoundaryNum() const { return m_nBoundaries; }
+    size_t getComponentNum() const { return m_nComponents; }
+    double getAvgEdgeLength() const { return m_AvgEdgeLength; }
+    double getAvgFaceArea() const{ return m_AvgFaceArea; }
+
+    const BoundingBox& getBoundingBox() const { return m_BoundingBox; }
+    const BoundingSphere& getBoundingSphere() const { return m_BoundingSphere; }
+    const BoundaryArray& getBoundaries() const { return m_Boundaries; }
         
-        std::string GetFileName() const { return m_FileName; }
+    bool isTriMesh() const; // model is a triangle mesh (only containing triangles)
+    bool isQuadMesh() const; // model is a quadrangle mesh (only containing quadangles)
+    bool isGeneralMesh() const; // model is a general mesh (the rest, not a tri- or quad)
+    bool isClosed() const; // model is a closed one (no boundaries)
+    bool isManifold() const; // model is a 2-manifold one (locally disc-like)
+    bool isTriManifold() const; // model is a 2-mainfold triangle mesh
+    bool isPatch() const; // model is a patch (single boundary, 2-manifold)
+
+    bool isBoundaryVertex(VertHandle vh) const;
+    bool isBoundaryFace(FaceHandle fh) const;
+    bool isBoundaryEdge(EdgeHandle eh) const;
+ private:
+    Mesh& mesh;
+    size_t     m_nVertices; // Number of valid vertices
+    size_t     m_nFaces;    // Number of valid faces
+    size_t     m_nHalfEdges; // Number of valid half edges
     
-        size_t GetVertNum() const { return m_nVertices; }
-        size_t GetFaceNum() const { return m_nFaces; }
-        size_t GetHalfEdgeNum() const { return m_nHalfEdges; }    
-        size_t GetBoundaryNum() const { return m_nBoundaries; }
-        size_t GetComponentNum() const { return m_nComponents; }
-        double GetAvgEdgeLength() const { return m_AvgEdgeLength; }
-        double GetAvgFaceArea() const{ return m_AvgFaceArea; }        
-        void GetBoundingBox(Coord& BoxMin, Coord& BoxMax, Coord& BoxDim) const { BoxMin = m_BoxMin; BoxMax = m_BoxMax; BoxDim = m_BoxDim; }
-        void GetBoundingSphere(Coord& Center, double& radius) const { Center = m_SphereCenter; radius = m_SphereRadius; }
-        PolyIndexArray& GetBoundary() { return m_Boundaries; }
-        
-        bool IsTriMesh() const; // model is a triangle mesh (only containing triangles)
-        bool IsQuadMesh() const; // model is a quadrangle mesh (only containing quadangles)
-        bool IsGeneralMesh() const; // model is a general mesh (the rest, not a tri- or quad)
-        bool IsClosed() const; // model is a closed one (no boundaries)
-        bool IsManifold() const; // model is a 2-manifold one (locally disc-like)
-        bool IsTriManifold() const; // model is a 2-mainfold triangle mesh
-        bool IsPatch() const; // model is a patch (single boundary, 2-manifold)
+    size_t     m_nBoundaries;  // Number of boundaries
+    size_t     m_nComponents;  // Number of connected components
 
-    private:
-        std::string  m_FileName; // File name(Path + Tilte + Ext)
-        size_t     m_nVertices; // Number of valid vertices
-        size_t     m_nFaces;    // Number of valid faces
-        size_t     m_nHalfEdges; // Number of valid half edges
+    BoundingBox m_BoundingBox;
+    BoundingSphere m_BoundingSphere;
+    BoundaryArray m_Boundaries;
+    
+    double  m_AvgEdgeLength;
+    double  m_AvgFaceArea;
 
-        size_t     m_nBoundaries;  // Number of boundaries
-        size_t     m_nComponents;  // Number of connected components
-
-        Coord   m_BoxMin, m_BoxMax, m_BoxDim;
-        Coord   m_SphereCenter;
-        double  m_SphereRadius;
-
-        double  m_AvgEdgeLength;
-        double  m_AvgFaceArea;
-
-        PolyIndexArray  m_Boundaries;   // Boundary vertex loop
-        
-        friend class MeshKernel;
-        friend class MeshIO;
-        friend class MeshBasicOP;
-    };
+    MESHFLAG flag;        
+    friend class MeshIO;
+    friend class MeshBasicOP;
+  };
 }
 #endif

@@ -2,7 +2,7 @@
 //
 //////////////////////////////////////////////////////////////////////
 
-#include "Heap.h"
+#include "heap.h"
 #include <cstdio>
 #include <cstdlib>
 #include <cassert>

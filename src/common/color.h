@@ -3,7 +3,7 @@
 
 #include <cstdlib>
 
-namespace MeshLib
+namespace meshlib
 {
     /* ================== Color (RGB) ================== */
     template <typename T> class Color{

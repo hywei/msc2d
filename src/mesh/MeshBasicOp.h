@@ -5,7 +5,7 @@
 #include "../common/types.h"
 #include "MeshElement.h"
 
-namespace MeshLib{
+namespace meshlib{
 
     class Mesh;
     
@@ -15,26 +15,41 @@ namespace MeshLib{
         MeshBasicOP(Mesh& mesh);
         ~MeshBasicOP();
 
-        void InitModel();
+        void initModel();
 
-        std::vector<VertHandle> GetAdjVertArray(const VertHandle&) const;
-        std::vector<FaceHandle> GetAdjFaceArray(const VertHandle&) const;
+        const VertHandleArray& getAdjVertArray(const VertHandle&) const;
+        const FaceHandleArray& getAdjFaceArray(const VertHandle&) const;        
         
     private:
-        
-        void CalAdjacentInfo();
+        void genEdgeInfo();
+        void genHalfEdgeDS(); //! only be call for manifold mesh
+
+        void genAdjacentInfo();
+        void genVertAdjacentInfo();
+        void genEdgeAdjacentInfo();
+        void genFaceAdjacentInfo();
       
-        void CalVertNormal(); // Calculate normal vector of all vertices      
-        void CalFaceNormal();   // Calculate normal vector of all faces
-        void CalBoundingBox(Coord3D& box_min, Coord3D& box_max, Coord3D& box_dim) const;
-        void CalBoundingSphere(Coord3D& sphere_center, double radius) const;
+        void calVertNormal();
+        void calFaceNormal();
 
-        size_t CountComponentNum() const; 
-        double CalAvgEdgeLength() const;
-        double CalAvgFaceArea() const;
+        BoundingBox calBoundingBox() const;
+        BoundingSphere calBoundingSphere() const;
+
+        size_t countComponentNum() const; 
+        double calAvgEdgeLength() const;
+
+        void analysisModel();
+        void sortAdjacentInfo();
         
     private:
-        Mesh& m_mesh;
+        Mesh& mesh;
+        
+        std::vector<VertHandleArray > vert_adj_vert_vec;
+        std::vector<FaceHandleArray > vert_adj_face_vec;
+        std::vector<EdgeHandleArray > vert_adj_edge_vec;
+        std::vector<FaceHandleArray > edge_adj_face_vec;
+        std::vector<FaceHandleArray > face_adj_face_vec;
+
     };
 }
 #endif

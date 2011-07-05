@@ -3,7 +3,7 @@
 
 #include <string>
 
-namespace MeshLib{
+namespace meshlib{
     
     class Mesh;
 

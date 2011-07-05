@@ -1,7 +1,7 @@
-#include "Utility.h"
+#include "utility.h"
 #include <cassert>
 
-void Utility::ResolveFileName(const std::string& filename, std::string& file_path, std::string& file_title, std::string& file_ext)
+void Util::ResolveFileName(const std::string& filename, std::string& file_path, std::string& file_title, std::string& file_ext)
 {
     //! TODO: add linux . .. tracing
     
@@ -25,7 +25,7 @@ void Utility::ResolveFileName(const std::string& filename, std::string& file_pat
 		file_ext += filename[i];
 }
 
-void Utility::MakeLower(std::string& str)
+void Util::MakeLower(std::string& str)
 {
     size_t length = str.length();
     for(size_t i = 0; i < length; ++ i){
@@ -34,7 +34,7 @@ void Utility::MakeLower(std::string& str)
     }
 }
 
-void Utility::MakeUpper(std::string& str)
+void Util::MakeUpper(std::string& str)
 {
     size_t length = str.length();
     for(size_t i = 0; i < length; ++ i){

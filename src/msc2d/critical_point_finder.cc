@@ -1,5 +1,6 @@
 #include "critical_point_finder.h"
-#include "mscomplex2d.h"
+#include "msc_wrapper.h"
+#include "../mesh/Mesh.h"
 #include <queue>
 
 namespace msc2d{
@@ -7,18 +8,18 @@ using namespace std;
 using namespace meshlib;
 
 CPFinder::CPFinder(MscWrapper& _msc): msc(_msc){}
-CPFinder::`CPFinder(){}
+CPFinder::~CPFinder(){}
 
 bool CPFinder::resolveFlatRegion(){
-  const vector<double>& sf = msc.scalar_field;
+  const vector<double>& sf = msc.sf;
   size_t vert_num = msc.mesh.getVertexNumber();  
   vector<bool> visited_flag(vert_num, false);
 
   msc.vert_priority_mp.clear();
   for(size_t vid = 0; vid < vert_num; ++vid){
     if(visited_flag[vid] == false){
-      queue<size_t> q;
-      q.push_back(vid);
+      queue<int> q;
+      q.push(vid);
       visited_flag[vid] = true;
 
       int priority = -1;
@@ -27,11 +28,11 @@ bool CPFinder::resolveFlatRegion(){
 
         msc.vert_priority_mp[v] = priority++;
 
-        vector<size_t> adj_vertices = msc.mesh.getAdjVertices(v);
+        vector<int> adj_vertices = msc.mesh.getAdjVertices(v);
         for(size_t k=0; k<adj_vertices.size(); ++k){
           size_t adj_vid = adj_vertices[k];
-          if(!visited_flag[adj_vid] && fabs(sf[vid]-sf[adj_vid]) < EPS){
-            q.push_back(adj_vid);
+          if(!visited_flag[adj_vid] && fabs(sf[vid]-sf[adj_vid]) < LARGE_ZERO_EPSILON){
+            q.push(adj_vid);
             visited_flag[adj_vid] = true;
           } // end if
         } // end for
@@ -49,32 +50,28 @@ bool CPFinder::findCriticalPoints(){
   CriticalPointArray& cp_vec = msc.cp_vec;
   cp_vec.clear();
   for(size_t vid=0; vid<mesh.getVertexNumber(); ++vid){
-    switch(getPointType(vid)){
-      case MININAL:
-        cp_vec.push_back(vid, MININAL); break;
-      case MAXIMAL:
-        cp_vec.push_back(vid, MAXIMAL); break;
-      case SADDLE:
-        cp_vec.push_back(vid, SADDLE); break;
-      default:
-        break;
-    }    
+    if(getPointType(vid) != REGULAR){
+      CriticalPoint cp;
+      cp.meshIndex = vid;
+      cp.type = getPointType(vid);
+      cp_vec.push_back(cp);
+    }
   }
   return true;
 }
 
-CriticalPointType CPFinder::getPointType(size_t vid){  
-  vector<size_t> adj_vertices = msc.mesh.getAdjVertices(mesh_point_index);
+CriticalPointType CPFinder::getPointType(int vid) const{  
+  vector<int> adj_vertices = msc.mesh.getAdjVertices(vid);
   vector<bool> adj_vflag;
 
   for(size_t k=0; k<adj_vertices.size(); ++k){
-    size_t _vid = adj_vertices[k];
+    int _vid = adj_vertices[k];
     if(msc.cmpScalarValue(vid, _vid) == 1) adj_vertices.push_back(false);
     else if(msc.cmpScalarValue(_vid, vid) == -1) adj_vertices.push_back(true);
   }
 
-  if(mesh.isBoundaryVertex(vid)){
-    adj_vflag.insert(adj_vflag.end(), reverse(adj_vflag.begin()+1, adj_vflag.end()-1));
+  if(msc.mesh.isBoundaryVertex(vid)){
+    adj_vflag.insert(adj_vflag.end(), adj_vflag.rbegin()+1, adj_vflag.rend()-1);
   }
 
   int alter_num(0);
@@ -84,7 +81,7 @@ CriticalPointType CPFinder::getPointType(size_t vid){
 
   assert(alter_num %2 == 0);
   if(alter_num == 0){
-    return msc.scalar_field[adj_vertices[0]] > msc.scalar_field[vid] ? MAXIMAL : MININAL;
+    return msc.sf[adj_vertices[0]] > msc.sf[vid] ? MAXIMAL : MINIMAL;
   }else if(alter_num == 2) return REGULAR;
   else return SADDLE;
 }

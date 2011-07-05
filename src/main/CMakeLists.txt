@@ -7,12 +7,12 @@ file(GLOB SOURCES *.cpp)
 link_directories(
   ${PROJECT_SOURCE_DIR}/lib)
 
-add_executable(mesh_lib ${HEADERS} ${SOURCES} ${MOCFILES})
+add_executable(msc ${HEADERS} ${SOURCES} ${MOCFILES})
 
-add_dependencies (mesh util)
+add_dependencies (msc2d mesh util)
                                       
 
-target_link_libraries(mesh_lib mesh util)
+target_link_libraries(msc msc2d mesh util)
                   
         
                   

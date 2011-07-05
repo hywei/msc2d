@@ -14,7 +14,7 @@ namespace msc2d{
 
  private:
     bool resolveFlatRegion();
-    CriticalPointType getPointType(int mesh_point_index);
+    CriticalPointType getPointType(int mesh_point_index) const;
     
  private:
     MscWrapper& msc;
