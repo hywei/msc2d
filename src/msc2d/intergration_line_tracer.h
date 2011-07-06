@@ -11,15 +11,24 @@ namespace msc2d{
   class ILTracer{
     
     class WEdge{
- public:
+   public:
     std::vector< std::pair<size_t, size_t> > max_ranges;
     std::vector< std::pair<size_t, size_t> > min_ranges;
   };
 
-    enum GradDir{
-      ASCENDING,
-      DESCENDING
-    };
+    class Tree{
+   public:
+      int root_index;
+      std::vector<int> leaf_index_vec;
+      std::vector<int> node_vec;
+
+      std::map<int, int> parent;
+      std::map<int, vector<int> > children;
+
+
+      std::map<int, int> leaf_il_mp;
+    }
+
     
  public:
     ILTracer(MscWrapper& );
@@ -33,8 +42,10 @@ namespace msc2d{
     bool traceAscendingPath(CriticalPoint&);
     bool traceDescendingPath();
     bool traceDescendingPath(CriticalPoint&);
+
+    bool makeTree();
+    bool sortNeighbor(CriticalPoint& cp);
     
-    size_t getGradientAscendingDirection(size_t vid) const;
  private:
     std::vector<WEdge> wedge_vec;
     std::vector<bool> junction_flag;

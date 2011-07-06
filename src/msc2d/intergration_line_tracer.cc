@@ -17,6 +17,20 @@ bool ILTracer::traceIntergrationLine(){
   return true;
 }
 
+size_t ILTracer::next(int vid, size_t curr_index){
+  size_t adj_num = msc.mesh.getAdjVertices(vid).size();
+  if(msc.mesh.isBoundary(vid) && curr_index == adj_num-1)
+    return adj_num;
+  return (curr_index+1)%adj_num;
+}
+
+size_t ILTracer::prev(int vid, size_t curr_index){
+  size_t adj_num = msc.mesh.getAdjVertices(vid).size();
+  if(msc.mesh.isBoundary(vid) && curr_index == 0)
+    return adj_num;
+  return (curr_index+adj_num-1)%adj_num;
+}
+
 bool ILTracer::createWEdge(){
   const Mesh& mesh = msc.mesh;  
   wedge_vec.clear(); wedge_vec.resize(mesh.getVertexNumber());
@@ -219,14 +233,40 @@ pair<size_t, size_t> ILTracer::getMinRangeAtSaddle(int sadd_vid, int prev_vid) c
   const vector<int>& in_verts = in_vertices[sadd_vid];
   const vector<int>& out_verts = out_vertices[sadd_vid];
   int side = 0;
-  if(prev_vid == -1) side = -1;
-  else{
-    int range_idx = getRangeIndex(sadd_vid, prev_vid);
-    assert(range_idx != -1);
-    int il_idx = getILIndex(sadd_vid, range_idx);
-    
+  int max_range_idx = getRangeIndex(sadd_vid, prev_vid);
+  assert(range_idx != -1);
+  const pair<size_t, size_t>& max_range = wedge_vec[sadd_vid].max_ranges[max_range_idx];
+  for(size_t k=max_range.first; k!=max_range.second, k=next(sadd_vid, k)){
+    int adj_vid = adj_vertices[k];
+    if(Util::isIn(out_vertices, adj_vid)){
+      if(adj_vid != prev_vid) side = -1;
+      else{
+        pair<int, int> e = makeEdge(sadd_vid, adj_vid);
+        const vector<size_t>& path_ids = edge_path_mp[e];
+        assert(path_ids.size() > 0);
+        side = path_side_record[path_ids[0]];
+      }
+    }else if(adj_vid == prev_vid) side=1;
   }
-  
+  assert(side != 0);
+  int min_range_idx(-1);
+  size_t min_range_num = wedge_vec[sadd_vid].min_range.size();
+  if(side == 1) min_range_idx = max_range_idx;
+  else min_range_idx = (max_range_idx + min_range_num-1)%min_range_num;
+  if(min_range_idx >= min_range_num){ //! may happen at boundary
+    //! FIX: 
+    min_range_idx = min_range_num-1;
+  }
+  const pair<size_t, size_t>& min_range = wedge_vec[sadd_vid].min_range[min_range_idx];
+  size_t first = min_range.first, second = min_range.second;
+  for(size_t k=min_range.first; k!=min_range.second; k=next(sadd_vid, k)){
+    int adj_vid = adj_vertices[k];
+    if(Util::isIn(in_vertices, adj_vid)){
+      if(side == 1){ second = next(sadd_vid, k); break;}
+      else if(side == -1) { first = k; }
+    }
+  }
+  return make_pair(first, second);
 }
 
 
@@ -259,6 +299,125 @@ int ILTracer::getRangeIndex(int vid, int adj_vid) const{
   assert(1);
   return -1;
 }
+
+bool ILTracer::sortNeighborIL(CriticalPoint& cp) const{
+  Tree tree;
+  if(!makeTree(cp, tree)) return false;
+  if(!sortTreeNode(tree)) return false;
+
+  return true;
+}
+
+bool ILTracer::makeTree(const CriticalPoint& cp, Tree& t) const{
+  vector<PATH> path_vec;
+  for(size_t k=0; k<cp.neighbor.size(); ++k){
+    size_t il_index = cp.neighbor[k].integrationLineIndex;
+    path_vec.push_back[il_vec[il_index]].path;
+  }
+
+  int hash = msc.mesh.getVertexNumber();
+  vector<int> leaves;
+  map<int, int> leaf_il_mp;
+  for(size_t k=0; k<path_vec.size(); ++k){
+    PATH& path = path_vec[k];
+    int leaf = path[0];
+    if(Util::isIn(leaves, leaf)){ // case 1
+      leaf = hash++;
+      int next_vid = path[1];
+      for(size_t j=0; j<path_vec.size(); ++j){
+        if(j==k) continue;
+        PATH& _path = path_vec[j];
+        for(size_t i=0; i<_path.size()-1; ++i){
+          int _next_vid = _path[i+1];
+          if(_next_vid == next_vid && _path[i] == path[0]){
+            _path[i] == leaf;
+          }
+        }
+      }
+      path[0] = leaf;
+    }
+    leaves.push_back(leaf);
+    leaf_il_mp[leaf] = k;
+  }
+
+  for(size_t k=0; k<path_vec.size(); ++k){
+    PATH& path = path_vec[k];
+    for(size_t i=1; i<path.size()-1; ++i){
+      int node = path[i];
+      if(Util::isIn(leaves, node)){ // case 2
+        int new_leaf(-1);
+        int curr_vid = leaf_il_mp[node];
+        int prev_vid(path[i-1]), next_vid(path[i+1]);
+        int range_idx1 = getRangeIndex(curr_vid, next_vid);
+        int range_idx2 = getRangeIndex(curr_vid, prev_vid);
+        int range_idx = -1;
+
+        //! TODO : get range and new leaf
+        assert(new_leaf != -1);
+        PATH& _path = il_vec[leaf_il_mp[leaf]].path;
+        _path.insert(_path.begin(), new_leaf);
+        *find(leaves.begin(), leaves.end(), leaf) = new_leaf;
+        leaf_il_mp[new_leaf] = leaf_il_mp[leaf];
+        leaf_il_mp.erase(leaf_il_mp.find(leaf));
+      }
+    }
+  }
+
+  //! create tree
+  tree.root = cp.meshIndex;
+  tree.parent[tree.root] = -1;
+  for(size_t k=0; k<path_vec.size(); ++k){
+    const PATH& path = path_vec[k];
+    for(size_t i=1; i<path.size(); ++i){
+      int curr_vid = path[i-1];
+      int next_vid = path[i];
+      tree.parent[curr_vid] = next_vid;
+      vector<int>& children = tree.children[next_vid];
+      if(!Util::isIn(children, curr_vid)) children.push_back(curr_vid);
+    }
+  }
+
+  return true;
+}
+
+bool ILTracer::sortTreeNode(Tree& tree) const{
+  stack<int> st;
+  q.push(tree.root);
+  map<int, int>::iterator im;
+  vector<int> il_index_vec;
+  while(!st.empty()){
+    int node = st.top(); st.pop();
+    if(tree.isLeaf(node)){
+      il_index_vec.push_back(tree.node_il_mp[node]);
+      continue;
+    }
+    vector<int> children = tree.children[node];
+    for(size_t k=0; k<children.size(); ++k){
+      int child = children[k];
+      im = tree.node_vert_mp.find(child);
+      if(im != tree.node_vert_mp.end()) children[k] = im->second;
+    }
+    int parent = tree.parent[node];
+    int vid = node;
+    im = tree.node_vert_mp.find(node);
+    if(im != tree.node_vert_mp.end())  vid = im->second;
+    const VertHandleArray& adj_vertices = msc.mesh.getAdjVertices(vid);
+
+    size_t out_index;
+    if(parent == -1) out_index = 0;
+    else out_index = distance( find(adj_vertices.begin(), adj_vertices.end(),
+                                    parent), adj_vertices.begin());
+    for(size_t k=0, i=out_index; k<adj_vertices.size(); ++k, i=next(vid,i)){
+      int adj_vid = adj_vertices[i];
+      if(Util::isIn(children, adj_vid)){
+        st.push(adj_vid);
+      }
+    }
+  }
+  
+  return true;
+}
+
 
 
 #undef NEXT
