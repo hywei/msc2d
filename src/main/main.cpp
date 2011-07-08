@@ -1,24 +1,20 @@
 #include <iostream>
 #include "../mesh/Mesh.h"
+#include "../msc2d/mscomplex.h"
+#include <boost/shared_ptr.hpp>
 
 using namespace std;
 int main(int argc, char** argv)
 {
-    if(argc <2) {
-        std::cout << "Please select a mesh model!" << std::endl;
-        return -1;
-    }
-    meshlib::Mesh mesh;
-    if(mesh.attachModel(argv[1])){
-      cout << "Vertex Number: " << mesh.getVertexNumber() << endl;
-      cout << "Face Number: " << mesh.getFaceNumber() << endl;
-      cout << "Edge Number: " << mesh.getEdgeNumber() << endl;
-      cout << "Manifold Mesh? : ";
-      if(mesh.isManifold()) cout << "YES" << endl;
-      else cout << "NO" << endl;
-    }else{
-      std::cout << "Can't AttachModel !" << std::endl;
-    }
-    
-    return 0;
+  if(argc <3) {
+    cout << "Usage: msc2d mesh-file scalar-field-file"<< endl;
+    return -1;
+  }
+  
+  msc2d::MSComplex2D msc;
+  msc.setMesh(argv[1]);
+  msc.setScalarField(argv[2]);
+  msc.createMSComplex2D();
+
+  return 0;
 }

@@ -8,7 +8,6 @@ using namespace meshlib;
 
 namespace msc2d{
 MscWrapper::MscWrapper(MSComplex2D& msc):
-    mesh(*msc.mesh),
     sf(msc.scalar_field),
     cp_vec(msc.cp_vec),
     il_vec(msc.il_vec){}
@@ -22,7 +21,6 @@ int MscWrapper::cmpScalarValue(size_t vid1, size_t vid2) const{
     assert(pri_1 != pri_2);
     return (pri_1 > pri_2) ? 1 : -1;
   }else{
-
     return sf[vid1] > sf[vid2] ? 1 : -1;
   }
 }

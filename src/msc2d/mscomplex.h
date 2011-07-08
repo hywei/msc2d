@@ -3,6 +3,8 @@
 
 #include <vector>
 #include <string>
+#include <map>
+#include <fstream>
 #include <boost/shared_ptr.hpp>
 
 namespace meshlib{
@@ -54,14 +56,34 @@ namespace msc2d{
     bool saveMSComplex(const std::string& file_name) const;
 
  private:
+    /*
+      Compair two vertices' scalar
+      @return 1: v1>v2; -1: v1<v2; 0:v1==v2
+    */
+    int cmpScalarValue(size_t vert_1, size_t vert_2) const;
+    double calGradient(size_t vert_1, size_t vert_2) const;
+
+    
+ private:
     boost::shared_ptr<meshlib::Mesh> mesh;
     std::vector<double> scalar_field;
 
     CriticalPointArray cp_vec;
     IntegrationLineArray il_vec;
 
-    friend class MscWrapper;
+    // vertex priority for flat region
+    std::map<int, int> vert_priority_mp;
+    std::vector<CriticalPointType> vert_type_vec;
+
+    friend class CPFinder;
+    friend class ILTracer;
+
+    friend std::istream & operator >> (std::istream&, MSComplex2D&);
+    friend std::ostream & operator << (std::ostream&, const MSComplex2D&);
   };
+
+  std::istream & operator >> (std::istream&, MSComplex2D&);
+  std::ostream & operator << (std::ostream&, const MSComplex2D&);
   
 }// end namespace
 

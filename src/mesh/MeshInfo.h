@@ -11,7 +11,7 @@ namespace meshlib{
   {
  public:
     // Constructor / Destructor
-    MeshInfo(Mesh& _mesh): mesh(_mesh){}
+ MeshInfo(Mesh& _mesh): mesh(_mesh){ flag = INITMESH;}
     ~MeshInfo(){}
     
     size_t getVertNum() const { return m_nVertices; }

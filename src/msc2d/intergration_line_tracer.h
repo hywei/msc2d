@@ -5,8 +5,7 @@
 #include <iostream>
 
 namespace msc2d{
-
-  class MscWrapper;
+  class MSComplex2D;
   
   class ILTracer{
     
@@ -54,7 +53,7 @@ namespace msc2d{
     std::map< std::pair<int, int>, std::vector<size_t> > edge_path_mp;
     std::map<size_t, short> path_side_record; //
 
-    MscWrapper& msc;
+    MSComplex2D& msc;
   }; 
 } // end namespace
 

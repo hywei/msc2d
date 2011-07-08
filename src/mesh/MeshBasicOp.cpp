@@ -394,7 +394,7 @@ void MeshBasicOP::sortAdjacentInfo()
       const Face& f = (mesh.p_Kernel->face_vec)[fh_vec_bak[0]];
       const VertHandleArray& vh_vec = f.vert_handle_vec;
       const EdgeHandleArray& eh_vec = f.edge_handle_vec;
-      size_t idx = distance(find(vh_vec.begin(), vh_vec.end(), vid), vh_vec.begin());
+      size_t idx = distance(vh_vec.begin(), find(vh_vec.begin(), vh_vec.end(), vid));
       assert(idx != vh_vec.size());
       assert(adj_edges.size() == 2 && adj_verts.size() == 2);
       VertHandle prev_vid = vh_vec[(idx+vh_vec.size()-1)%vh_vec.size()];
@@ -417,7 +417,7 @@ void MeshBasicOP::sortAdjacentInfo()
         const VertHandleArray& vh_vec = f.vert_handle_vec;
         const EdgeHandleArray& eh_vec = f.edge_handle_vec;
         if(Util::IsSetFlag(f.flag, BOUNDARY_FACE)){
-          size_t idx = distance(find(vh_vec.begin(), vh_vec.end(), vid), vh_vec.begin());
+          size_t idx = distance(vh_vec.begin(), find(vh_vec.begin(), vh_vec.end(), vid));
           assert(idx != vh_vec.size());
           VertHandle prev_vid = vh_vec[ (idx+adj_num-1) % adj_num];
 
@@ -438,10 +438,10 @@ void MeshBasicOP::sortAdjacentInfo()
       } // end for
     }else{
       next_idx = 0;
-      const Face& f = (mesh.p_Kernel->face_vec)[fh_vec_bak[0]];
+      const Face& f = (mesh.p_Kernel->face_vec)[fh_vec_bak[next_idx]];
       const VertHandleArray& vh_vec = f.vert_handle_vec;
       const EdgeHandleArray& eh_vec = f.edge_handle_vec;
-      size_t idx = distance(find(vh_vec.begin(), vh_vec.end(), vid), vh_vec.begin());
+      size_t idx = distance(vh_vec.begin(), find(vh_vec.begin(), vh_vec.end(), vid));
       assert(idx != vh_vec.size());
       next_vid = vh_vec[(idx+1)%vh_vec.size()]; next_eid = eh_vec[idx];
     }
@@ -455,13 +455,13 @@ void MeshBasicOP::sortAdjacentInfo()
       const Face& f = (mesh.p_Kernel->face_vec)[fh];
       const VertHandleArray& vh_vec = f.vert_handle_vec;
       const EdgeHandleArray& eh_vec = f.edge_handle_vec;
-      size_t idx = distance(find(vh_vec.begin(), vh_vec.end(), vid), vh_vec.begin());
+      size_t idx = distance(vh_vec.begin(), find(vh_vec.begin(), vh_vec.end(), vid));
       assert(idx != vh_vec.size());
       VertHandle prev_vid = vh_vec[ (idx+vh_vec.size()-1) % vh_vec.size()];
       for(size_t j=0; j<adj_num; ++j){
-        if(j==k) continue;
+        if(j==next_idx) continue;
         const Face& adj_f = (mesh.p_Kernel->face_vec)[fh_vec_bak[j]];
-        const VertHandleArray& vh_vec = f.vert_handle_vec;
+        const VertHandleArray& vh_vec = adj_f.vert_handle_vec;
         if(find(vh_vec.begin(), vh_vec.end(), prev_vid) != vh_vec.end()){
           next_idx = j;
           next_vid = prev_vid;

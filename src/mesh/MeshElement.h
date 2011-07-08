@@ -18,19 +18,23 @@ namespace meshlib{
   typedef std::vector<HalfEdgeHandle> HalfEdgeHandleArray;
     
   enum VERTFLAG{
+    INITVERT = 0x00000000,
     ISOLATED_VERT = 0x00000100, // isolated vertex flag
     NONMANIFOLD_VERT = 0x00000200, // manifold vertex flag
     BOUNDARY_VERT = 0x00000400  // boundary vertex flag
   };
   enum FACEFLAG{
+    INITFACE = 0x00000000,
     BOUNDARY_FACE = 0x00000100,
     NONMANIFOLD_FACE = 0x00000200
   };
   enum EDGEFLAG{
+    INITEDGE = 0x00000000,
     BOUNDARY_EDGE = 0x00000100,
     NONMANIFOLD_EDGE = 0x00000200
   };
   enum MESHFLAG{
+    INITMESH = 0x00000000,
     TRIMESH = 0x00000100,
     QUADMESH = 0x00000200,
     POLYMESH = 0x00000400,
@@ -39,11 +43,13 @@ namespace meshlib{
     
   class Vert
   {        
- public:
+ public:    
     Coord3D coord;
     Normal normal;        
     VERTFLAG flag; // flag bits
-    HalfEdgeHandle he_handle;        
+    HalfEdgeHandle he_handle;
+
+    Vert(){ flag = INITVERT; }
   };
 
   class Face
@@ -53,13 +59,15 @@ namespace meshlib{
     EdgeHandleArray edge_handle_vec;
     Normal normal;
     FACEFLAG flag;
+
+    Face(){ flag = INITFACE; }
   };
 
   class Edge
   {
  public:
  Edge(VertHandle h1, VertHandle h2):
-    vert_handle_1(h1), vert_handle_2(h2){}
+    vert_handle_1(h1), vert_handle_2(h2){ flag = INITEDGE; }
 
  public:
     HalfEdgeHandle he_handle_1;
@@ -75,6 +83,8 @@ namespace meshlib{
       _e.vert_handle_1 == vert_handle_2 &&
       _e.vert_handle_2 == vert_handle_1;
     }
+
+    Edge() { flag = INITEDGE;}
   };
 
   class HalfEdge
