@@ -1,5 +1,6 @@
 #include "mscomplex.h"
 #include "critical_point_finder.h"
+#include "integration_line_tracer.h"
 #include "../mesh/Mesh.h"
 #include "../common/macro.h"
 #include <fstream>
@@ -71,10 +72,13 @@ bool MSComplex2D::createMSComplex2D(double threshold /*=0.003*/){
   CPFinder cp_finder(*this);
   cp_finder.findCriticalPoints();
   cp_finder.printCriticalPointsInfo();
+
+  ILTracer il_tracer(*this);
+  il_tracer.traceIntegrationLine();
   
 }
 
-int MSComplex2D::cmpScalarValue(size_t vid1, size_t vid2) const{
+int MSComplex2D::cmpScalarValue(int vid1, int vid2) const{
   if( fabs(scalar_field[vid1] - scalar_field[vid2]) < LARGE_ZERO_EPSILON ){
     int pri_1 = vert_priority_mp.find(vid1)->second;
     int pri_2 = vert_priority_mp.find(vid2)->second;
@@ -85,13 +89,19 @@ int MSComplex2D::cmpScalarValue(size_t vid1, size_t vid2) const{
   }
 }
 
-double MSComplex2D::calGradient(size_t vid1, size_t vid2) const{
+double MSComplex2D::calGradient(int vid1, int vid2) const{
   if(vid1 == vid2) return 0.0;
   const Coord3D& coord1 = mesh->getVertexCoord(vid1);
   const Coord3D& coord2 = mesh->getVertexCoord(vid2);
   double dis = (coord1-coord2).abs();
   if(dis < LARGE_ZERO_EPSILON) return numeric_limits<double>::infinity();
   return (scalar_field[vid1] - scalar_field[vid2])/dis;
+}
+
+CriticalPointType MSComplex2D::getVertexType(int vid) const{
+  int cp_index = vert_cp_index_mp[vid];
+  if(cp_index == -1) return REGULAR;
+  return cp_vec[cp_index].type;
 }
 
 
@@ -104,12 +114,12 @@ bool MSComplex2D::checkMeshAndScalarField() const
   }
 
   if(mesh->getVertexNumber() != scalar_field.size()){
-    cerr << "Error: " << endl;
+    cerr << "Error: vertex number != saclar size" << endl;
     return false;
   }  
 
   if(!mesh->isManifold()) {
-    cerr << "non-manifold mesh" <<endl;
+    cerr << "non-manifold mesh" <<endl;    
   }
   return true;
 }
@@ -137,7 +147,7 @@ bool MSComplex2D::saveMSComplex(const std::string& file_name) const
     const PATH& path = il_vec[k].path;
     for(size_t i=0; i<path.size()-1; ++i){
       os << path[i];
-      if(i%10 == 0) os << "\\";
+      if((i+1)%10 == 0 ) os << " \\\n";
       else os << " ";
     }
     os << path[path.size()-1] << endl;
@@ -172,7 +182,4 @@ ostream & operator << (std::ostream& os, const MSComplex2D& msc){
   }
   return os;
 }
-
-
-
 }

@@ -21,8 +21,6 @@ void MeshBasicOP::initModel()
 {
   MeshInfo& m_info = *(mesh.p_Info);
   genEdgeInfo();  
-
-  cout << __LINE__ << endl;
   
   genVertAdjacentInfo();
   genEdgeAdjacentInfo();
@@ -469,7 +467,7 @@ void MeshBasicOP::sortAdjacentInfo()
           break;
         }
       }       
-      assert (vert_adj_face_vec[fh_vec_bak[next_idx]] != vert_adj_face_vec[k-1]);
+      assert(fh_vec_bak[next_idx] != adj_faces[k-1]);
       adj_faces[k] = fh_vec_bak[next_idx];
       adj_verts[k] = next_vid; adj_edges[k] = next_eid;
     }    

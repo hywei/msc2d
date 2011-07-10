@@ -27,7 +27,7 @@ bool MeshInfo::isBoundaryEdge(EdgeHandle eh) const
 
 bool MeshInfo::isManifold() const
 {
-  return !Util::IsSetFlag(flag, MANIFOLD);
+  return Util::IsSetFlag(flag, MANIFOLD);
 }
 
 }

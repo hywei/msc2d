@@ -60,10 +60,9 @@ namespace msc2d{
       Compair two vertices' scalar
       @return 1: v1>v2; -1: v1<v2; 0:v1==v2
     */
-    int cmpScalarValue(size_t vert_1, size_t vert_2) const;
-    double calGradient(size_t vert_1, size_t vert_2) const;
-
-    
+    int cmpScalarValue(int vert_1, int vert_2) const;
+    double calGradient(int vert_1, int vert_2) const;
+    CriticalPointType getVertexType(int vid) const;
  private:
     boost::shared_ptr<meshlib::Mesh> mesh;
     std::vector<double> scalar_field;
@@ -73,7 +72,8 @@ namespace msc2d{
 
     // vertex priority for flat region
     std::map<int, int> vert_priority_mp;
-    std::vector<CriticalPointType> vert_type_vec;
+    // vertex index -> critical point index mapping
+    std::vector<int> vert_cp_index_mp;
 
     friend class CPFinder;
     friend class ILTracer;

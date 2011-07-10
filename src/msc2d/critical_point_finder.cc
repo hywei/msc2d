@@ -47,16 +47,16 @@ bool CPFinder::resolveFlatRegion(){
 bool CPFinder::findCriticalPoints(){
   if(!resolveFlatRegion()) return false;
   CriticalPointArray& cp_vec = msc.cp_vec;
-  cp_vec.clear();
-  msc.vert_type_vec.clear();
-  msc.vert_type_vec.resize(mesh.getVertexNumber());
+  cp_vec.clear(); msc.vert_cp_index_mp.clear();
+  msc.vert_cp_index_mp.resize(mesh.getVertexNumber(), -1);
   for(size_t vid=0; vid<mesh.getVertexNumber(); ++vid){
-    msc.vert_type_vec[vid] = getPointType(vid);
-    if(msc.vert_type_vec != REGULAR){
+    CriticalPointType type = getPointType(vid);
+    if(type != REGULAR){
       CriticalPoint cp;
       cp.meshIndex = vid;
-      cp.type = msc.vert_type_vec[vid];
+      cp.type = type;
       cp_vec.push_back(cp);
+      msc.vert_cp_index_mp[vid] = cp_vec.size()-1;
     }
   }
   return true;
@@ -83,7 +83,7 @@ CriticalPointType CPFinder::getPointType(int vid) const{
 
   assert(alter_num %2 == 0);
   if(alter_num == 0){
-    return sf[adj_vertices[0]] > sf[vid] ? MAXIMAL : MINIMAL;
+    return msc.cmpScalarValue(vid, adj_vertices[0]) == 1 ? MAXIMAL : MINIMAL;
   }else if(alter_num == 2) return REGULAR;
   else return SADDLE;
 }

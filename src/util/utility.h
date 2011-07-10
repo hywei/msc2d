@@ -36,4 +36,8 @@ public:
             if(IsSetFlag(flag_ele, flag)) ClearFlag(flag_ele, flag);
             else SetFlag(flag_ele, flag);
         }
+    template <class T>
+        static bool isIn(const std::vector<T>& v, const T& x) {
+      return find(v.begin(), v.end(), x) != v.end();
+    }
 };
