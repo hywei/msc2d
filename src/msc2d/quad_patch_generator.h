@@ -14,11 +14,11 @@ namespace msc2d{
 
  private:
     void genQuadPatchArray(const CriticalPoint& cp);
-    void fillInnerFace(QuadPatch& qp) const;    
-    
+    bool findPatchInnerFace(QuadPatch& qp) const;
+    CriticalPointNeighbor getNextCPNeighbor(const CriticalPointNeighbor&) const;
  private:
     MSComplex2D& msc;
-    const Mesh& mesh;
+    const meshlib::Mesh& mesh;
 
     std::vector< std::vector<int> > formed_patchs;
     

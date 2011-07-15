@@ -20,6 +20,7 @@ namespace msc2d{
   enum CriticalPointType{
     MINIMAL = 0,
     SADDLE,
+
     MAXIMAL,
     REGULAR
   };
@@ -40,7 +41,7 @@ namespace msc2d{
   struct QuadPatch
   {
     FaceIndexArray face;  //face index into original mesh
-    std::vector<int> boundaryIntegrationLineIndex;  //need to be in counter-clock-wise order, the size should be 4
+    std::vector<int> boundaryIntegrationLineIndex;  //need to be in counter-clock-wise order
   };
   typedef std::vector<QuadPatch> QuadPatchArray;
   struct PatchAdjacent
@@ -91,6 +92,7 @@ namespace msc2d{
 
     friend class CPFinder;
     friend class ILTracer;
+    friend class QPGenerator;
 
     friend std::istream & operator >> (std::istream&, MSComplex2D&);
     friend std::ostream & operator << (std::ostream&, const MSComplex2D&);

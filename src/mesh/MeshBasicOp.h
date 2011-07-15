@@ -20,6 +20,8 @@ namespace meshlib{
         const VertHandleArray& getAdjVertArray(const VertHandle&) const;
         const FaceHandleArray& getAdjFaceArray(const VertHandle&) const;
         bool getInnerFaces(const PATH& loop, FaceHandleArray& fh_vec) const;
+        EdgeHandle getEdgeHandle(VertHandle vh1, VertHandle vh2) const;
+        HalfEdgeHandle getHalfEdgeHandle(VertHandle vh1, VertHandle vh2) const;
         
     private:
         void genEdgeInfo();
@@ -44,13 +46,16 @@ namespace meshlib{
         
     private:
         Mesh& mesh;
+        VertArray& vert_vec;
+        FaceArray& face_vec;
+        EdgeArray& edge_vec;
+        HalfEdgeArray& he_vec;
         
         std::vector<VertHandleArray > vert_adj_vert_vec;
         std::vector<FaceHandleArray > vert_adj_face_vec;
         std::vector<EdgeHandleArray > vert_adj_edge_vec;
         std::vector<FaceHandleArray > edge_adj_face_vec;
         std::vector<FaceHandleArray > face_adj_face_vec;
-
     };
 }
 #endif

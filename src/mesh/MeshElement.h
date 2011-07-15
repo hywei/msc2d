@@ -16,6 +16,8 @@ namespace meshlib{
   typedef std::vector<FaceHandle> FaceHandleArray;
   typedef std::vector<EdgeHandle> EdgeHandleArray;
   typedef std::vector<HalfEdgeHandle> HalfEdgeHandleArray;
+  
+  typedef std::vector<VertHandle> PATH;
     
   enum VERTFLAG{
     INITVERT = 0x00000000,
@@ -57,6 +59,7 @@ namespace meshlib{
  public:
     VertHandleArray vert_handle_vec;
     EdgeHandleArray edge_handle_vec;
+    HalfEdgeHandleArray he_handle_vec;
     Normal normal;
     FACEFLAG flag;
 
