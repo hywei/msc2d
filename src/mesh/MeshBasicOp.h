@@ -18,7 +18,8 @@ namespace meshlib{
         void initModel();
 
         const VertHandleArray& getAdjVertArray(const VertHandle&) const;
-        const FaceHandleArray& getAdjFaceArray(const VertHandle&) const;        
+        const FaceHandleArray& getAdjFaceArray(const VertHandle&) const;
+        bool getInnerFaces(const PATH& loop, FaceHandleArray& fh_vec) const;
         
     private:
         void genEdgeInfo();

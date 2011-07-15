@@ -4,11 +4,11 @@
 #include <vector>
 #include <map>
 #include <iostream>
+#include "mscomplex.h"
 
 namespace meshlib{ class Mesh; }
 
 namespace msc2d{
-  class MSComplex2D;
   class CriticalPoint;      
   
   class ILTracer{
@@ -21,15 +21,13 @@ namespace msc2d{
 
     class Tree{
    public:
-      int root_index;
-      std::vector<int> leaf_index_vec;
-      std::vector<int> node_vec;
-
+      int hash;
+      int root;
+      std::vector<int> leaves;
       std::map<int, int> parent;
       std::map<int, std::vector<int> > children;
-
-
-      std::map<int, int> leaf_il_mp;
+      std::map<int, int> node_vert_mp;
+      std::map<int, int> node_path_mp;
     };
 
     
@@ -45,8 +43,12 @@ namespace msc2d{
     bool traceDescendingPath();
     void setAscendingPathData();    
 
-    bool makeTree();
-    bool sortNeighbor(CriticalPoint& cp);
+    void genCPNeighbor();
+    void sortCPNeighbor(CriticalPoint&) const;
+    void makeTree(const CriticalPoint&, Tree& t) const;
+    void traverseTree(Tree& t, std::vector<int>&) const;
+    void splitSaddle(std::vector<PATH>& path_vec, Tree& t) const;
+    void replaceSaddle(std::vector<PATH>& path_vec, Tree& t) const;
 
     // help function    
     size_t next(int vid, size_t curr_index) const;

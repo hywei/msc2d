@@ -585,7 +585,21 @@ void MeshBasicOP::genHalfEdgeDS()
     outer_he.prev_he_handle = prev_he_handle;
     outer_he.next_he_handle = next_he_handle;            
   }
+}
 
+bool MeshBasicOP::getInnerFaces(const PATH& loop, FaceHandleArray& fh_vec) const{
+  if(loop.size()<3 || loop[0] != loop[loop.size()-1]) return false;
+
+  for(size_t i=0; i<loop.size()-1; ++i){
+    int vid = loop[i];
+  }
+  set<FaceHandle>& faces;
+  queue<FaceHandle>& q;
+  
+
+  fh_vec.clear();
+  fh_vec.assign(faces.begin(), faces.end());
+  return true;
 }
 
 }

@@ -2,6 +2,7 @@
 #include "mscomplex.h"
 #include "../mesh/Mesh.h"
 #include "../util/utility.h"
+#include <stack>
 
 using namespace std;
 using namespace meshlib;
@@ -29,6 +30,7 @@ bool ILTracer::traceIntegrationLine(){
   if(!traceAscendingPath()) return false;
   setAscendingPathData();
   if(!traceDescendingPath()) return false;
+  genCPNeighbor();
   return true;
 }
 
@@ -117,7 +119,7 @@ bool ILTracer::traceAscendingPath(){
           assert(mesh_path.size() < mesh.getEdgeNumber());
         }while(msc.getVertexType(curr_vid) != MAXIMAL);
         il.startIndex = msc.vert_cp_index_mp[it->meshIndex];
-        il.endIndex = msc.vert_cp_index_mp[curr_vid];
+        il.endIndex = msc.vert_cp_index_mp[curr_vid];        
       }
     }
   }
@@ -198,7 +200,7 @@ bool ILTracer::traceDescendingPath(){
           path.push_back(curr_vid);
           assert(path.size() < mesh.getEdgeNumber());
         }
-        il.startIndex = it->meshIndex;
+        il.startIndex = msc.vert_cp_index_mp[it->meshIndex];
         il.endIndex = msc.vert_cp_index_mp[curr_vid];
       }
     }
@@ -301,121 +303,179 @@ pair<size_t, size_t> ILTracer::getMinRangeAtSaddle(int sadd_vid, int prev_vid) {
   return make_pair(first, second);
 }
 
-// bool ILTracer::sortNeighborIL(CriticalPoint& cp) const{
-//   Tree tree;
-//   if(!makeTree(cp, tree)) return false;
-//   if(!sortTreeNode(tree)) return false;
-
-//   return true;
-// }
-
-bool ILTracer::makeTree(const CriticalPoint& cp, Tree& t) const{
-  vector<PATH> path_vec;
-  for(size_t k=0; k<cp.neighbor.size(); ++k){
-    size_t il_index = cp.neighbor[k].integrationLineIndex;
-    path_vec.push_back[il_vec[il_index]].path;
+void ILTracer::genCPNeighbor(){
+  for(size_t k=0; k<msc.il_vec.size(); ++k){
+    const IntegrationLine& il = msc.il_vec[k];
+    CriticalPoint& cp1 = msc.cp_vec[il.startIndex];
+    CriticalPoint& cp2 = msc.cp_vec[il.endIndex];
+    CriticalPointNeighbor cp_nb1, cp_nb2;
+    cp_nb1.pointIndex = il.startIndex; cp_nb1.integrationLineIndex = k;
+    cp_nb2.pointIndex = il.endIndex; cp_nb2.integrationLineIndex = k;
+    cp1.neighbor.push_back(cp_nb2);
+    cp2.neighbor.push_back(cp_nb2);
   }
+  for(size_t k=0; k<msc.cp_vec.size(); ++k) sortCPNeighbor(msc.cp_vec[k]);
+}
 
-  int hash = mesh.getVertexNumber();
-  vector<int> leaves;
-  map<int, int> leaf_il_mp;
+void ILTracer::sortCPNeighbor(CriticalPoint& cp) const{
+  vector<CriticalPointNeighbor> nb_bak = cp.neighbor;
+  if(cp.type == SADDLE){
+    cp.neighbor.clear();
+    const WEdge& we = wedge_vec[cp.meshIndex];
+    const VertHandleArray& adj_vertices = mesh.getAdjVertices(cp.meshIndex);
+    bool flag = true;
+    pair<size_t, size_t> range;
+    for(size_t i=0; i<we.max_ranges.size()+we.min_ranges.size(); ++i, flag = !flag){
+      range = flag ? we.max_ranges[i/2] : we.min_ranges[i/2];
+      for(size_t k=range.first; k!=range.second; k=next(cp.meshIndex, k)){
+        int adj_vid = adj_vertices[k];
+        for(size_t j=0; j<nb_bak.size(); ++j){
+          const IntegrationLine& il = msc.il_vec[nb_bak[j].integrationLineIndex];
+          if(adj_vid == il.path[1]) cp.neighbor.push_back(nb_bak[k]);
+        }
+      }
+    }
+  }else{
+
+    Tree tree;
+    vector<int> il_index_vec;
+    makeTree(cp, tree);  
+    traverseTree(tree, il_index_vec);
+    cp.neighbor.clear();
+    for(size_t k=0; k<il_index_vec.size(); ++k){
+      cp.neighbor.push_back(nb_bak[il_index_vec[k]]);
+    }
+  }
+  if(cp.neighbor.size() != nb_bak.size()){
+    cout << cp.meshIndex << " " << msc.vert_cp_index_mp[cp.meshIndex];
+    if(cp.type == SADDLE) cout << " SAD" << endl;
+    else if(cp.type == MAXIMAL) cout << " MAX" << endl;
+    else cout << " MIN"<<endl;
+  }
+  assert(cp.neighbor.size() == nb_bak.size());
+}
+
+void ILTracer::splitSaddle(vector<PATH>& path_vec, Tree& t) const{
   for(size_t k=0; k<path_vec.size(); ++k){
     PATH& path = path_vec[k];
     int leaf = path[0];
-    if(Util::isIn(leaves, leaf)){ // case 1
-      leaf = hash++;
-      int next_vid = path[1];
+    if(Util::isIn(t.leaves, leaf)){
+      leaf = t.hash++; // split this saddle with a visual node
+      t.node_vert_mp[leaf] =  path[0]; // make node-vert mapping
+      //! update other paths which pass this vertex
       for(size_t j=0; j<path_vec.size(); ++j){
-        if(j==k) continue;
         PATH& _path = path_vec[j];
-        for(size_t i=0; i<_path.size()-1; ++i){
-          int _next_vid = _path[i+1];
-          if(_next_vid == next_vid && _path[i] == path[0]){
-            _path[i] == leaf;
-          }
-        }
+        for(size_t i=1; i<_path.size(); ++i)
+          if(_path[i-1] == path[0] && _path[i] == path[1])
+            _path[i-1]  = leaf;        
       }
-      path[0] = leaf;
     }
-    leaves.push_back(leaf);
-    leaf_il_mp[leaf] = k;
+    t.leaves.push_back(leaf);
+    t.node_path_mp[leaf] = k; // make node-il mapping
   }
+}
 
+void ILTracer::replaceSaddle(vector<PATH>& path_vec, Tree& t) const{
   for(size_t k=0; k<path_vec.size(); ++k){
     PATH& path = path_vec[k];
     for(size_t i=1; i<path.size()-1; ++i){
-      int node = path[i];
-      if(Util::isIn(leaves, node)){ // case 2
-        int new_leaf(-1);
-        int curr_vid = leaf_il_mp[node];
-        int prev_vid(path[i-1]), next_vid(path[i+1]);
-        int range_idx1 = getRangeIndex(curr_vid, next_vid);
-        int range_idx2 = getRangeIndex(curr_vid, prev_vid);
-        int range_idx = -1;
-
-        //! TODO : get range and new leaf
-        assert(new_leaf != -1);
-        PATH& _path = il_vec[leaf_il_mp[leaf]].path;
-        _path.insert(_path.begin(), new_leaf);
-        *find(leaves.begin(), leaves.end(), leaf) = new_leaf;
-        leaf_il_mp[new_leaf] = leaf_il_mp[leaf];
-        leaf_il_mp.erase(leaf_il_mp.find(leaf));
+      if(Util::isIn(t.leaves, path[i])){ // a saddle
+        assert(msc.getVertexType(path[i]) == SADDLE);
+        int visual_node = t.hash++;
+        int mapping_vert(-1);
+        //! get the mapping vertex index
+        bool ascending = (msc.cmpScalarValue(path[i], path[i+1]) == 1) ? false : true;
+        const WEdge& we = wedge_vec[path[i]];
+        const VertHandleArray& adj_vertices = mesh.getAdjVertices(path[i]);
+        int r_index = getRangeIndex(path[i], path[i+1]);        
+        if(ascending){
+          int next_r_index = (r_index+1)%we.max_ranges.size();
+          if(next_r_index == r_index)//! at boundary
+            mapping_vert = adj_vertices[we.min_ranges[r_index].second];
+          else
+            mapping_vert = adj_vertices[we.max_ranges[next_r_index].first];          
+        }else{
+          int next_r_index = (r_index+1)%we.min_ranges.size();
+          if(next_r_index == r_index)
+            mapping_vert = adj_vertices[we.max_ranges[r_index].second];
+          else
+            mapping_vert = adj_vertices[we.min_ranges[next_r_index].first];
+        }
+        t.node_vert_mp[visual_node] = mapping_vert;
+        t.node_path_mp[visual_node] = t.node_path_mp[path[i]];
+        //! remove the real leaf
+        size_t idx = distance(t.leaves.begin(),
+                              find(t.leaves.begin(), t.leaves.end(), path[i]));
+        t.leaves[idx] = visual_node;
+        //! update the path
+        PATH& _path = path_vec[t.node_path_mp[path[i]]];
+        _path.insert(_path.begin(), visual_node);
+        t.node_path_mp.erase(t.node_path_mp.find(path[i]));
       }
     }
   }
+}
+
+void ILTracer::makeTree(const CriticalPoint& cp, Tree& t) const{
+  vector<PATH> path_vec;
+  for(size_t k=0; k<cp.neighbor.size(); ++k){
+    size_t il_index = cp.neighbor[k].integrationLineIndex;
+    path_vec.push_back(msc.il_vec[il_index].path);    
+  }
+  t.hash = mesh.getVertexNumber();
+  //! resolve two special cases
+  splitSaddle(path_vec, t);
+  replaceSaddle(path_vec, t);
 
   //! create tree
-  tree.root = cp.meshIndex;
-  tree.parent[tree.root] = -1;
+  t.root = cp.meshIndex;
+  t.parent[t.root] = -1;
   for(size_t k=0; k<path_vec.size(); ++k){
     const PATH& path = path_vec[k];
     for(size_t i=1; i<path.size(); ++i){
       int curr_vid = path[i-1];
       int next_vid = path[i];
-      tree.parent[curr_vid] = next_vid;
-      vector<int>& children = tree.children[next_vid];
+      assert(t.parent.find(curr_vid) == t.parent.end() ||
+             t.parent.find(curr_vid)->second == next_vid);
+      t.parent[curr_vid] = next_vid;
+      vector<int>& children = t.children[next_vid];
       if(!Util::isIn(children, curr_vid)) children.push_back(curr_vid);
     }
   }
-
-  return true;
 }
 
-// bool ILTracer::sortTreeNode(Tree& tree) const{
-//   stack<int> st;
-//   q.push(tree.root);
-//   map<int, int>::iterator im;
-//   vector<int> il_index_vec;
-//   while(!st.empty()){
-//     int node = st.top(); st.pop();
-//     if(tree.isLeaf(node)){
-//       il_index_vec.push_back(tree.node_il_mp[node]);
-//       continue;
-//     }
-//     vector<int> children = tree.children[node];
-//     for(size_t k=0; k<children.size(); ++k){
-//       int child = children[k];
-//       im = tree.node_vert_mp.find(child);
-//       if(im != tree.node_vert_mp.end()) children[k] = im->second;
-//     }
-//     int parent = tree.parent[node];
-//     int vid = node;
-//     im = tree.node_vert_mp.find(node);
-//     if(im != tree.node_vert_mp.end())  vid = im->second;
-//     const VertHandleArray& adj_vertices = mesh.getAdjVertices(vid);
-
-//     size_t out_index;
-//     if(parent == -1) out_index = 0;
-//     else out_index = distance( find(adj_vertices.begin(), adj_vertices.end(),
-//                                     parent), adj_vertices.begin());
-//     for(size_t k=0, i=out_index; k<adj_vertices.size(); ++k, i=next(vid,i)){
-//       int adj_vid = adj_vertices[i];
-//       if(Util::isIn(children, adj_vid)){
-//         st.push(adj_vid);
-//       }
-//     }
-//   }
-  
-//   return true;
-// }  
+void ILTracer::traverseTree(Tree& tree, vector<int>& il_index_vec) const{
+  stack<int> st;
+  st.push(tree.root);
+  map<int, int>::iterator im;
+  il_index_vec.clear();
+  while(!st.empty()){
+    int node = st.top(); st.pop();
+    if(Util::isIn(tree.leaves, node)){
+      il_index_vec.push_back(tree.node_path_mp[node]);
+      continue;
+    }
+    const vector<int>& subnodes = tree.children[node];
+    vector<int> children = subnodes;
+    for(size_t k=0; k<children.size(); ++k){
+      int child = children[k];
+      im = tree.node_vert_mp.find(child);
+      if(im != tree.node_vert_mp.end()) children[k] = im->second;
+    }
+    int parent = tree.parent[node];
+    int vid = node;
+    im = tree.node_vert_mp.find(node);
+    if(im != tree.node_vert_mp.end())  vid = im->second;
+    const VertHandleArray& adj_vertices = mesh.getAdjVertices(vid);
+    size_t out_index;
+    if(parent == -1) out_index = 0;
+    else out_index = distance(adj_vertices.begin(),
+                              find(adj_vertices.begin(), adj_vertices.end(), parent));
+    for(size_t k=0, i=out_index; k<adj_vertices.size(); ++k, i=next(vid,i)){
+      int adj_vid = adj_vertices[i];
+      size_t idx = distance(children.begin(), find(children.begin(), children.end(), adj_vid));
+      if(idx != children.size()) st.push(subnodes[idx]);
+    }
+  } 
+}  
 } // end namespace

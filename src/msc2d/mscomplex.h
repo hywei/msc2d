@@ -36,6 +36,19 @@ namespace msc2d{
     PATH path; //the index into original mesh, path always start from a saddle point to a max/min point
   };  
   typedef std::vector<IntegrationLine> IntegrationLineArray;
+  typedef std::vector<int> FaceIndexArray;
+  struct QuadPatch
+  {
+    FaceIndexArray face;  //face index into original mesh
+    std::vector<int> boundaryIntegrationLineIndex;  //need to be in counter-clock-wise order, the size should be 4
+  };
+  typedef std::vector<QuadPatch> QuadPatchArray;
+  struct PatchAdjacent
+  {
+    int patchIndex;
+    int commonIntegrationLineIndex;
+  };
+  typedef std::vector< std::vector< PatchAdjacent> > PatchAdjacentArray; //because the integration line is in counter-clock-wise order, the patch is the same order
 
   
   class MSComplex2D{
@@ -69,6 +82,7 @@ namespace msc2d{
 
     CriticalPointArray cp_vec;
     IntegrationLineArray il_vec;
+    QuadPatchArray qp_vec;
 
     // vertex priority for flat region
     std::map<int, int> vert_priority_mp;
