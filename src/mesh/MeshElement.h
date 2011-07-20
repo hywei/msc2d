@@ -51,7 +51,7 @@ namespace meshlib{
     VERTFLAG flag; // flag bits
     HalfEdgeHandle he_handle;
 
-    Vert(){ flag = INITVERT; }
+    Vert(){ flag = INITVERT; he_handle = -1; }
   };
 
   class Face
@@ -70,7 +70,11 @@ namespace meshlib{
   {
  public:
  Edge(VertHandle h1, VertHandle h2):
-    vert_handle_1(h1), vert_handle_2(h2){ flag = INITEDGE; }
+    vert_handle_1(h1), vert_handle_2(h2){
+   flag = INITEDGE;
+   he_handle_1 = he_handle_2 = -1;
+ }
+ Edge(): he_handle_1(-1), he_handle_2(-1) { flag = INITEDGE;}
 
  public:
     HalfEdgeHandle he_handle_1;
@@ -86,14 +90,14 @@ namespace meshlib{
       _e.vert_handle_1 == vert_handle_2 &&
       _e.vert_handle_2 == vert_handle_1;
     }
-
-    Edge() { flag = INITEDGE;}
   };
 
   class HalfEdge
   {
  public:
     HalfEdge();
+    HalfEdge(VertHandle vh, EdgeHandle eh, FaceHandle fh,
+             HalfEdgeHandle prev_hh, HalfEdgeHandle next_hh, HalfEdgeHandle oppo_hh);
     ~HalfEdge(){}
         
  public:
@@ -102,13 +106,19 @@ namespace meshlib{
     HalfEdgeHandle oppo_he_handle; /// opposite halfedge
 
     VertHandle vert_handle; /// vertex of halfedge
-    FaceHandle face_handle; /// face of halfedge, -1 if boundary halfedge
     EdgeHandle edge_handle; /// edge of halfedge
+    FaceHandle face_handle; /// face of halfedge, -1 if boundary halfedge
   };
     
   inline HalfEdge::HalfEdge():
       prev_he_handle(-1), next_he_handle(-1), oppo_he_handle(-1),
       vert_handle(-1), face_handle(-1), edge_handle(-1){}
+  inline HalfEdge::HalfEdge(VertHandle vh, EdgeHandle eh, FaceHandle fh,
+                            HalfEdgeHandle prev_hh, HalfEdgeHandle next_hh,
+                            HalfEdgeHandle oppo_hh)
+    : vert_handle(vh), edge_handle(eh), face_handle(fh),
+      prev_he_handle(prev_hh), next_he_handle(next_hh), oppo_he_handle(oppo_hh){}
+
 
   typedef std::vector<Vert> VertArray;
   typedef std::vector<Face> FaceArray;

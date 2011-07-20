@@ -10,10 +10,10 @@ namespace msc2d{
     QPGenerator(MSComplex2D& _msc);
     ~QPGenerator();
 
-    void genQuadPatchArray();
+    void genQuadPatch();
 
  private:
-    void genQuadPatchArray(const CriticalPoint& cp);
+    void genQuadPatch(const CriticalPoint& cp);
     bool findPatchInnerFace(QuadPatch& qp) const;
     CriticalPointNeighbor getNextCPNeighbor(const CriticalPointNeighbor&) const;
  private:

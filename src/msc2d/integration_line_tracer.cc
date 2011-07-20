@@ -176,6 +176,8 @@ bool ILTracer::traceDescendingPath(){
   cout << "Trace descending path" << endl;
   for(vector<CriticalPoint>::iterator it=msc.cp_vec.begin(); it!=msc.cp_vec.end(); ++it){
     if(it->type == SADDLE){
+      if(it->meshIndex == 1709)
+        cout << "Debug" << endl;
       const vector<pair<size_t, size_t> >& min_ranges = wedge_vec[it->meshIndex].min_ranges;
       for(size_t k=0; k<min_ranges.size(); ++k){
         path_side_record.clear();
@@ -278,13 +280,13 @@ pair<size_t, size_t> ILTracer::getMinRangeAtSaddle(int sadd_vid, int prev_vid) {
         assert(path_ids.size() > 0);
         side = path_side_record[path_ids[0]];
       }
-    }else if(adj_vid == prev_vid) side=1;
+    }else if(adj_vid == prev_vid){ side=1; break; }
   }
   assert(side != 0);
   int min_range_idx(-1);
   size_t max_range_num = wedge_vec[sadd_vid].max_ranges.size();
   size_t min_range_num = wedge_vec[sadd_vid].min_ranges.size();
-  if(side == 1) {
+  if(side == -1) {
     min_range_idx = max_range_idx;
     if(min_range_idx >= min_range_num) min_range_idx = max_range_idx-1;
   }else{
@@ -296,8 +298,8 @@ pair<size_t, size_t> ILTracer::getMinRangeAtSaddle(int sadd_vid, int prev_vid) {
   for(size_t k=min_range.first; k!=min_range.second; k=next(sadd_vid, k)){
     int adj_vid = adj_vertices[k];
     if(Util::isIn(in_verts, adj_vid)){
-      if(side == 1){ second = next(sadd_vid, k); break;}
-      else if(side == -1) { first = k; }
+      if(side == -1){ second = next(sadd_vid, k); break;}
+      else if(side == 1) { first = k; }
     }
   }
   return make_pair(first, second);
@@ -312,7 +314,7 @@ void ILTracer::genCPNeighbor(){
     cp_nb1.pointIndex = il.startIndex; cp_nb1.integrationLineIndex = k;
     cp_nb2.pointIndex = il.endIndex; cp_nb2.integrationLineIndex = k;
     cp1.neighbor.push_back(cp_nb2);
-    cp2.neighbor.push_back(cp_nb2);
+    cp2.neighbor.push_back(cp_nb1);
   }
   for(size_t k=0; k<msc.cp_vec.size(); ++k) sortCPNeighbor(msc.cp_vec[k]);
 }
@@ -331,20 +333,18 @@ void ILTracer::sortCPNeighbor(CriticalPoint& cp) const{
         int adj_vid = adj_vertices[k];
         for(size_t j=0; j<nb_bak.size(); ++j){
           const IntegrationLine& il = msc.il_vec[nb_bak[j].integrationLineIndex];
-          if(adj_vid == il.path[1]) cp.neighbor.push_back(nb_bak[k]);
+          if(adj_vid == il.path[1]) cp.neighbor.push_back(nb_bak[j]);
         }
       }
     }
   }else{
-
     Tree tree;
     vector<int> il_index_vec;
     makeTree(cp, tree);  
     traverseTree(tree, il_index_vec);
     cp.neighbor.clear();
-    for(size_t k=0; k<il_index_vec.size(); ++k){
+    for(int k=il_index_vec.size()-1; k>=0; --k)
       cp.neighbor.push_back(nb_bak[il_index_vec[k]]);
-    }
   }
   if(cp.neighbor.size() != nb_bak.size()){
     cout << cp.meshIndex << " " << msc.vert_cp_index_mp[cp.meshIndex];
@@ -353,6 +353,24 @@ void ILTracer::sortCPNeighbor(CriticalPoint& cp) const{
     else cout << " MIN"<<endl;
   }
   assert(cp.neighbor.size() == nb_bak.size());
+  for(size_t k=0; k<cp.neighbor.size(); ++k){
+    if(!Util::isIn(nb_bak, cp.neighbor[k])) {
+      cerr <<"Warning: there are something wrong on sort critial point neighbor" << endl;
+    }
+  }
+  if(cp.meshIndex == 1709 || cp.meshIndex == 1712){
+    cout << cp.meshIndex <<": ";
+    cout << "\t CP_Vert: ";
+    for(size_t i=0; i<cp.neighbor.size(); ++i){
+      const CriticalPoint& _cp = msc.cp_vec[cp.neighbor[i].pointIndex];
+      cout << _cp.meshIndex << " ";
+    }
+    cout << endl << "\t IL_Index: ";
+    for(size_t i=0; i<cp.neighbor.size(); ++i){
+      cout << cp.neighbor[i].integrationLineIndex<<" ";
+    }
+    cout << endl;
+  }
 }
 
 void ILTracer::splitSaddle(vector<PATH>& path_vec, Tree& t) const{

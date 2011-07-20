@@ -101,6 +101,7 @@ namespace msc2d{
   std::istream & operator >> (std::istream&, MSComplex2D&);
   std::ostream & operator << (std::ostream&, const MSComplex2D&);
   
+  bool operator == (const CriticalPointNeighbor& lhs, const CriticalPointNeighbor& rhs);
 }// end namespace
 
 #endif

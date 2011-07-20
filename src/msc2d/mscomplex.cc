@@ -1,6 +1,7 @@
 #include "mscomplex.h"
 #include "critical_point_finder.h"
 #include "integration_line_tracer.h"
+#include "quad_patch_generator.h"
 #include "../mesh/Mesh.h"
 #include "../common/macro.h"
 #include <fstream>
@@ -75,7 +76,9 @@ bool MSComplex2D::createMSComplex2D(double threshold /*=0.003*/){
 
   ILTracer il_tracer(*this);
   il_tracer.traceIntegrationLine();
-  
+
+  QPGenerator qp_generator(*this);
+  qp_generator.genQuadPatch();
 }
 
 int MSComplex2D::cmpScalarValue(int vid1, int vid2) const{
@@ -137,7 +140,7 @@ bool MSComplex2D::saveMSComplex(const std::string& file_name) const
   for(size_t k=0; k<cp_vec.size(); ++k){
     os << "CP " << cp_vec[k].meshIndex;
     if(cp_vec[k].type == MINIMAL) os << " MINIMAL" << endl;
-    else if(cp_vec[k].type == MAXIMAL) os << " MAXNIMAL" << endl;
+    else if(cp_vec[k].type == MAXIMAL) os << " MAXIMAL" << endl;
     else if(cp_vec[k].type == SADDLE) os << " SADDLE" << endl;
   }
 
@@ -182,4 +185,9 @@ ostream & operator << (std::ostream& os, const MSComplex2D& msc){
   }
   return os;
 }
+
+bool operator == (const CriticalPointNeighbor& lhs, const CriticalPointNeighbor& rhs){
+  return lhs.pointIndex == rhs.pointIndex && lhs.integrationLineIndex == rhs.integrationLineIndex;
+}
+
 }

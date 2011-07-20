@@ -493,96 +493,65 @@ void MeshBasicOP::genHalfEdgeDS()
     return;
   }
 
-  typedef pair<VertHandle, VertHandle> MeshEdge;
-  map <MeshEdge, HalfEdgeHandle> edge_map;
+  map <EdgeHandle, HalfEdgeHandle> edge_map;
 
   FaceArray& face_vec = mesh.p_Kernel->getFaceArray();
   HalfEdgeArray& he_vec = mesh.p_Kernel->getHEArray();
   for(size_t fid=0; fid<face_vec.size(); ++fid){
     const Face& face = face_vec[fid];
-    const vector<VertHandle>& vh_vec = face.vert_handle_vec;
+    const VertHandleArray& vh_vec = face.vert_handle_vec;
+    const EdgeHandleArray& eh_vec = face.edge_handle_vec;
     HalfEdgeHandle origin_he_handle = he_vec.size();
     size_t vh_num = vh_vec.size();
     for(size_t k=0; k<vh_vec.size(); ++k){
-      const VertHandle& vh1 = vh_vec[k];
-      const VertHandle& vh2 = vh_vec[(k+1)%vh_vec.size()];
-      MeshEdge me = make_pair(vh1, vh2);
-      MeshEdge oppo_me = make_pair(vh2, vh1);
-
       /// create a new halfedge
       HalfEdgeHandle curr_he_handle = origin_he_handle + k;
       HalfEdgeHandle next_he_handle = origin_he_handle + (k+1)%vh_num;
       HalfEdgeHandle prev_he_handle = origin_he_handle + (k+vh_num-1)%vh_num;
-      HalfEdgeHandle oppo_he_handle = -1;                
-                
-      if(edge_map.find(oppo_me) != edge_map.end()){
-        oppo_he_handle = edge_map[oppo_me];
+      HalfEdgeHandle oppo_he_handle = -1;
+
+      Edge& curr_edge = edge_vec[eh_vec[k]];
+      if(edge_map.find(eh_vec[k]) != edge_map.end()){ /// update info
+        oppo_he_handle = edge_map[eh_vec[k]];
         HalfEdge& oppo_he = he_vec[oppo_he_handle];
         oppo_he.oppo_he_handle = curr_he_handle;
+        curr_edge.he_handle_2 = curr_he_handle;
+      }else{
+        curr_edge.he_handle_1 = curr_he_handle;
+        edge_map.insert(make_pair(eh_vec[k], curr_he_handle));
       }
-      
-      HalfEdge he;
-      he.vert_handle = vh1;
-      he.face_handle = fid;
-      he.edge_handle = face.edge_handle_vec[k];
-      he.prev_he_handle = prev_he_handle;
-      he.next_he_handle = next_he_handle;
-      he.oppo_he_handle = oppo_he_handle;
-
-      he_vec.push_back(he);
-
-      edge_map[me] = curr_he_handle;
+      he_vec.push_back(HalfEdge(vh_vec[k], eh_vec[k], fid,
+                                prev_he_handle, next_he_handle, oppo_he_handle));
     }
   }
-  /// form boundary halfedge
-  vector<HalfEdgeHandle> bdy_he_vec;
+  /// form outer boundary halfedge
   for(size_t k=0; k<he_vec.size(); ++k){
-    if(he_vec[k].oppo_he_handle == -1) bdy_he_vec.push_back(k);
-  }
-  for(size_t k=0; k<bdy_he_vec.size(); ++k){
-    HalfEdge& he = he_vec[bdy_he_vec[k]];
-    const VertHandle& vh1 = he.vert_handle;
-    const VertHandle& vh2 = he_vec[he.next_he_handle].vert_handle;
+    if(he_vec[k].oppo_he_handle == -1){
+      HalfEdge& inner_he = he_vec[k];
+      HalfEdgeHandle prev_he_handle = inner_he.prev_he_handle;
+      HalfEdgeHandle next_he_handle = inner_he.next_he_handle;
 
-    HalfEdge bdy_he;
-    bdy_he.vert_handle = vh2;
-    bdy_he.face_handle = -1; /// no face
-    bdy_he.edge_handle = he.edge_handle;
+      /// find previous out halfedge for this outer halfedge
+      HalfEdgeHandle curr_he_handle = k;
+      while(he_vec[prev_he_handle].oppo_he_handle != -1){
+        curr_he_handle = he_vec[prev_he_handle].oppo_he_handle;
+        prev_he_handle = he_vec[curr_he_handle].prev_he_handle;
+      }
 
-    he_vec.push_back(bdy_he);
-    MeshEdge bdy_edge = make_pair(vh2, vh1);
-    edge_map[bdy_edge] = he_vec.size()-1;            
-  }
-  for(size_t k=0; k<bdy_he_vec.size(); ++k){
-    HalfEdge& inner_he = he_vec[bdy_he_vec[k]];    
-    HalfEdgeHandle prev_he_handle = inner_he.prev_he_handle;
-    HalfEdgeHandle next_he_handle = inner_he.next_he_handle;
+      /// find next out halfedge for this outer halfedge
+      curr_he_handle = k;
+      while(he_vec[next_he_handle].oppo_he_handle != -1){
+        curr_he_handle = he_vec[next_he_handle].oppo_he_handle;
+        next_he_handle = he_vec[curr_he_handle].next_he_handle;
+      }
 
-    /// find previous out halfedge for this outer halfedge
-    HalfEdgeHandle curr_he_handle = bdy_he_vec[k];
-    while(he_vec[prev_he_handle].oppo_he_handle != -1){
-      curr_he_handle = he_vec[prev_he_handle].oppo_he_handle;
-      prev_he_handle = he_vec[curr_he_handle].prev_he_handle;
+      he_vec.push_back(HalfEdge(he_vec[inner_he.next_he_handle].vert_handle, inner_he.edge_handle,
+                              -1, prev_he_handle, next_he_handle, k));
+      inner_he.oppo_he_handle = he_vec.size()-1;
+      Edge& e = edge_vec[inner_he.edge_handle];
+      assert(e.vert_handle_1 != -1 && e.vert_handle_2 == -1);
+      e.vert_handle_2 = he_vec.size()-1;
     }
-
-    /// find next out halfedge for this outer halfedge
-    curr_he_handle = bdy_he_vec[k];
-    while(he_vec[next_he_handle].oppo_he_handle != -1){
-      curr_he_handle = he_vec[next_he_handle].oppo_he_handle;
-      next_he_handle = he_vec[curr_he_handle].next_he_handle;
-    }
-
-    const VertHandle& vh1 = inner_he.vert_handle;
-    const VertHandle& vh2 = he_vec[inner_he.next_he_handle].vert_handle;
-    const VertHandle& vh3 = he_vec[curr_he_handle].vert_handle;
-
-    MeshEdge outer_edge = make_pair(vh2, vh1);
-    HalfEdgeHandle outer_he_handle = edge_map[outer_edge];
-    HalfEdge& outer_he = he_vec[outer_he_handle];
-    inner_he.oppo_he_handle = outer_he_handle;
-    outer_he.oppo_he_handle = bdy_he_vec[k];
-    outer_he.prev_he_handle = prev_he_handle;
-    outer_he.next_he_handle = next_he_handle;            
   }
   //! generate face half edge info
   for(size_t k=0; k<face_vec.size(); ++k){
