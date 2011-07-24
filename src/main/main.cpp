@@ -14,7 +14,7 @@ int main(int argc, char** argv)
   msc2d::MSComplex2D msc;
   msc.setMesh(argv[1]);
   msc.setScalarField(argv[2]);
-  msc.createMSComplex2D();
+  msc.createMSComplex2D(0.001);
   string sf_filename = argv[2];
   size_t idx = sf_filename.rfind(".sf");
   if(idx != string::npos){

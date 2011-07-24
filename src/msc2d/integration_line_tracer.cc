@@ -31,6 +31,7 @@ bool ILTracer::traceIntegrationLine(){
   setAscendingPathData();
   if(!traceDescendingPath()) return false;
   genCPNeighbor();
+  unfoldMultiSaddle();
   return true;
 }
 

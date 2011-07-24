@@ -28,6 +28,8 @@ void Simplifor::calPersistence(){
 }
 
 void Simplifor::simplify(double threshold){
+  removed_il_flag.clear(); removed_il_flag.resize(il_vec.size(), false);
+  removed_cp_flag.clear(); removed_cp_flag.resize(cp_vec.size(), false);
   calPersistence();
   while(persistence_set.size()>4){
     const PersPair& pp = *persistence_set.begin();
@@ -41,15 +43,22 @@ void Simplifor::simplify(double threshold){
 
 
 bool Simplifor::cancel(int cancelIL_index){
+
   const IntegrationLine& cancelIL = il_vec[cancelIL_index];
+
+  cout << "cancel " << cp_vec[cancelIL.startIndex].meshIndex << " "
+       << cp_vec[cancelIL.endIndex].meshIndex << endl;
+
   int scp_index(cancelIL.startIndex), mcp_index(cancelIL.endIndex);
+  if(removed_cp_flag[scp_index] || removed_cp_flag[mcp_index]) return false;
   assert(removed_cp_flag[scp_index] == removed_cp_flag[mcp_index]);
-  if(!removed_cp_flag[scp_index] || !removed_cp_flag[mcp_index]) return false;
   
   const CriticalPoint& s = cp_vec[scp_index];
   const CriticalPoint& m = cp_vec[mcp_index];
 
-  int bridgeIL_index = (cancelIL_index+2)%s.neighbor.size();
+  int cancel_nb_idx = getILIndexInNeighbor(s, cancelIL_index);
+
+  int bridgeIL_index = s.neighbor[(cancel_nb_idx+2)%s.neighbor.size()].integrationLineIndex;
   if(bridgeIL_index == cancelIL_index){// at boundary
     removeSad(scp_index);
     return true;
@@ -86,7 +95,7 @@ bool Simplifor::cancel(int cancelIL_index){
                      il_vec[bridgeIL_index].endIndex, cancelIL_index, bridgeIL_index);
 
   // remove the saddle and the maximal/minimal
-  removed_cp_flag[mcp_index] = false;
+  removed_cp_flag[mcp_index] = true;
   removeSad(scp_index);
 
   return true;
@@ -100,8 +109,12 @@ void Simplifor::transferConnection(int cp1_idx, int cp2_idx, int il1_idx, int il
   int nb_il_idx1 = getILIndexInNeighbor(cp_vec[cp1_idx], il1_idx);
   int nb_il_idx2 = getILIndexInNeighbor(cp_vec[cp2_idx], il2_idx);
   assert(nb_il_idx1 != -1 && nb_il_idx2 != -1);
-  nb2.erase(nb2.begin() + nb_il_idx2);
-  for(int i=(nb_il_idx1+1)%nb1.size(); i != nb_il_idx1; i=(i+1)%nb1.size()){
+  //nb2.erase(nb2.begin() + nb_il_idx2);
+  size_t nb1_num = nb1.size();
+  for(int i=(nb_il_idx1+1)%nb1_num; i != nb_il_idx1; i=(i+1)%nb1_num){
+    CriticalPoint& _s = cp_vec[nb1[i].pointIndex];
+    int _nb_idx = getILIndexInNeighbor(_s, nb1[i].integrationLineIndex);
+    _s.neighbor[_nb_idx].pointIndex = cp2_idx;
     nb2.insert(nb2.begin() + nb_il_idx2, nb1[i]);
     ++nb_il_idx2;
   }
@@ -123,21 +136,31 @@ void Simplifor::transferConnection(int cp1_idx, int cp2_idx, int il1_idx, int il
 }
 
 void Simplifor::removeSad(int cp_index) {
-  const CriticalPoint& cp = cp_vec[cp_index];  
-  removed_cp_flag[cp_index] = false;
+  const CriticalPoint& cp = cp_vec[cp_index];
+
+  removed_cp_flag[cp_index] = true;
   for(size_t k=0; k<cp.neighbor.size(); ++k){
     int il_index = cp.neighbor[k].integrationLineIndex;
-    removed_il_flag[il_index] = false;
+    removed_il_flag[il_index] = true;
     const IntegrationLine& il = il_vec[il_index];
     CriticalPoint& _cp = cp_vec[il.endIndex];
     int nb_il_idx = getILIndexInNeighbor(_cp, il_index);
     assert(nb_il_idx != -1);
     _cp.neighbor.erase(_cp.neighbor.begin() + nb_il_idx);
-    double _ps = msc.calPersistence(il_vec[il_index].startIndex, il_vec[il_index].endIndex);
-    set<PersPair, PersPairCmp>::iterator is = persistence_set.find(PersPair(il_index, _ps));
-    assert(is != persistence_set.end());
-    persistence_set.erase(is);
+    double _ps = msc.calPersistence(il_vec[il_index].startIndex,
+                                    il_vec[il_index].endIndex)/sum_persistence;
+    removePersPair(il_index);
+//    set<PersPair, PersPairCmp>::iterator is = persistence_set.find(PersPair(il_index, _ps));
+//    assert(is != persistence_set.end());
+//    persistence_set.erase(is);
   }
+}
+
+bool Simplifor::removePersPair(int il_index){
+  for(set<PersPair, PersPairCmp>::iterator is = persistence_set.begin(); is!=persistence_set.end(); ++is){
+    if(is->first == il_index) { persistence_set.erase(is); return true; }
+  }
+  return false;
 }
 
 void Simplifor::update(){

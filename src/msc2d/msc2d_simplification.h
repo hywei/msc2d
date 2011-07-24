@@ -34,6 +34,7 @@ namespace msc2d{
     bool cancel(int cancelIL_index);
     void transferConnection(int cp1_idx, int cp2_idx, int il1_idx, int il2_idx);
     void removeSad(int cp_index);
+    bool removePersPair(int il_index);
     void update();
     void refinePath();
     int getILIndexInNeighbor(const CriticalPoint& cp, int il_index) const;

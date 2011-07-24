@@ -85,16 +85,20 @@ CriticalPointType CPFinder::getPointType(int vid) const{
   if(alter_num == 0){
     return msc.cmpScalarValue(vid, adj_vertices[0]) == 1 ? MAXIMAL : MINIMAL;
   }else if(alter_num == 2) return REGULAR;
-  else return SADDLE;
+  else {
+    if(alter_num != 4) cout << "This is a multi-saddle " << vid << endl;
+    return SADDLE;
+  }
 }
 
 void CPFinder::printCriticalPointsInfo() const{
   size_t cp_num = msc.cp_vec.size();
-  size_t max_num(0), min_num(0), sad_num(0);
+  size_t max_num(0), min_num(0), sad_num(0), multi_sad_num(0);
   for(size_t k=0; k<cp_num; ++k){
     if(msc.cp_vec[k].type == MAXIMAL) ++max_num;
     if(msc.cp_vec[k].type == MINIMAL) ++min_num;
     if(msc.cp_vec[k].type == SADDLE) ++sad_num;
+    
   }
   cout << "###Total critical points number: " << cp_num << endl;
   cout << "###Maximum points number: " << max_num << endl;

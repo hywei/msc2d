@@ -2,6 +2,7 @@
 #include "critical_point_finder.h"
 #include "integration_line_tracer.h"
 #include "quad_patch_generator.h"
+#include "msc2d_simplification.h"
 #include "../mesh/Mesh.h"
 #include "../common/macro.h"
 #include <fstream>
@@ -77,6 +78,9 @@ bool MSComplex2D::createMSComplex2D(double threshold /*=0.003*/){
 
   ILTracer il_tracer(*this);
   il_tracer.traceIntegrationLine();
+
+  Simplifor simplifor(*this);
+  simplifor.simplify(threshold);
 
   QPGenerator qp_generator(*this);
   qp_generator.genQuadPatch();

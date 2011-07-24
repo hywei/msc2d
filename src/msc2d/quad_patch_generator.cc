@@ -23,6 +23,7 @@ void QPGenerator::genQuadPatch(){
 
 void QPGenerator::genQuadPatch(const CriticalPoint& cp){
   for(size_t k=0; k<cp.neighbor.size(); ++k){
+
     const CriticalPointNeighbor& cp_nb1 = cp.neighbor[k];
     vector<CriticalPointNeighbor> nb_vec; nb_vec.push_back(cp_nb1);
     vector<int> il_index_vec; il_index_vec.push_back(cp_nb1.integrationLineIndex);
