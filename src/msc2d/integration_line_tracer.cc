@@ -346,6 +346,27 @@ void ILTracer::sortCPNeighbor(CriticalPoint& cp) const{
     for(int k=il_index_vec.size()-1; k>=0; --k)
       cp.neighbor.push_back(nb_bak[il_index_vec[k]]);
   }
+
+  if(mesh.isBoundaryVertex(cp.meshIndex)){
+    // boundary cp's frist neighbor should also be a boundary
+    const VertHandleArray& adj_vertices = mesh.getAdjVertices(cp.meshIndex);
+    CriticalPointNeighborArray _nb = cp.neighbor;
+    int first_index = -1;
+    for(size_t i=0; i<adj_vertices.size(); ++i){
+      int vid = adj_vertices[i];
+      for(size_t k=0; k<_nb.size(); ++k){
+        int first_vid;
+        const IntegrationLine& il = msc.il_vec[_nb[k].integrationLineIndex];
+        if(msc.cp_vec[il.startIndex].meshIndex == cp.meshIndex) first_vid = il.path[1];
+        else first_vid = il.path[il.path.size()-2];
+        if(first_vid == vid){ first_index = k; break; }
+      }
+      if(first_index != -1) break;
+    }
+    for(size_t k=0; k<cp.neighbor.size(); ++k)
+      cp.neighbor[k] = _nb[(first_index+k)%_nb.size()];
+  }
+  
   if(cp.neighbor.size() != nb_bak.size()){
     cout << cp.meshIndex << " " << msc.vert_cp_index_mp[cp.meshIndex];
     if(cp.type == SADDLE) cout << " SAD" << endl;
@@ -495,5 +516,71 @@ void ILTracer::traverseTree(Tree& tree, vector<int>& il_index_vec) const{
       if(idx != children.size()) st.push(subnodes[idx]);
     }
   } 
-}  
+}
+
+void ILTracer::unfoldMultiSaddle(){
+  for(size_t k=0; k<msc.cp_vec.size(); ++k){
+    if(msc.cp_vec[k].type == SADDLE && !isNormalSaddle(msc.cp_vec[k]))
+      unfoldMultiSaddle(msc.cp_vec[k]);
+  }
+}
+
+void ILTracer::unfoldMultiSaddle(CriticalPoint& cp){
+  bool bd_flag = mesh.isBoundaryVertex(cp.meshIndex);
+  while(!isNormalSaddle(cp)){
+    CriticalPoint new_cp;
+    new_cp.meshIndex = cp.meshIndex; new_cp.type = SADDLE;
+    IntegrationLine new_il1, new_il2;
+    int new_cp_idx = msc.cp_vec.size() - 1;
+    int new_il1_idx(msc.il_vec.size()-2);
+    int new_il2_idx(msc.il_vec.size()-1);
+    CriticalPointNeighbor new_nb1, new_nb2;
+    
+    new_il1 = msc.il_vec[cp.neighbor[1].integrationLineIndex];
+    new_il1.startIndex = new_cp_idx;    
+    new_nb1.pointIndex = cp.neighbor[1].pointIndex;
+    new_nb1.integrationLineIndex = new_il1_idx;    
+     
+    // set new saddle's neighbor
+    new_cp.neighbor.push_back(new_nb1);
+    new_cp.neighbor.push_back(cp.neighbor[1]);
+    // update two max/min points neighbor
+    CriticalPointNeighborArray::iterator iter1, iter2;
+    CriticalPoint& m1 = msc.cp_vec[cp.neighbor[1].pointIndex];
+    iter1 = find(m1.neighbor.begin(), m1.neighbor.end(), cp.neighbor[1]);
+    assert(iter1 != m1.neighbor.end());
+    m1.neighbor.insert(iter1, new_nb1);
+
+    msc.cp_vec.push_back(new_cp);
+    msc.il_vec.push_back(new_il1);
+    
+    if(!bd_flag){ // non-boundary saddle
+      new_il2 = msc.il_vec[cp.neighbor[2].integrationLineIndex];
+      new_il2.startIndex = new_cp_idx;
+      new_nb2.pointIndex = cp.neighbor[2].pointIndex;
+      new_nb2.integrationLineIndex = new_il2_idx;
+      new_cp.neighbor.push_back(new_nb2);
+      new_cp.neighbor.push_back(cp.neighbor[2]);
+      CriticalPoint& m2 = msc.cp_vec[cp.neighbor[2].pointIndex];   
+      iter2 = find(m2.neighbor.begin(), m2.neighbor.end(), cp.neighbor[2]);
+      assert(iter2 != m2.neighbor.end());    
+      m2.neighbor.insert(iter2+1, new_nb2);
+      cp.neighbor.erase(cp.neighbor.begin()+1);
+
+      msc.il_vec.push_back(new_il2);
+    }
+    if(bd_flag) cp.neighbor.erase(cp.neighbor.begin());
+    else{ // remove two neighbor
+      cp.neighbor.erase(cp.neighbor.begin()+1);
+      cp.neighbor.erase(cp.neighbor.begin()+1);
+    }
+  }
+}
+
+bool ILTracer::isNormalSaddle(const CriticalPoint& cp) const{
+  if(cp.type != SADDLE) return false;
+  if(mesh.isBoundaryVertex(cp.meshIndex)) return cp.neighbor.size() <= 3;
+  return cp.neighbor.size() == 4;
+}
+
 } // end namespace

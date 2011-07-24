@@ -6,6 +6,7 @@
 #include "../common/macro.h"
 #include <fstream>
 #include <limits>
+#include <cmath>
 
 using namespace std;
 using namespace meshlib;
@@ -107,6 +108,10 @@ CriticalPointType MSComplex2D::getVertexType(int vid) const{
   return cp_vec[cp_index].type;
 }
 
+double MSComplex2D::calPersistence(int cp1_index, int cp2_index) const{
+  return fabs(scalar_field[cp_vec[cp1_index].meshIndex] -
+              scalar_field[cp_vec[cp2_index].meshIndex]);
+}
 
 bool MSComplex2D::checkMeshAndScalarField() const
 {

@@ -17,6 +17,7 @@ namespace msc2d{
     int pointIndex;  //the index into critical point array
     int integrationLineIndex; //the integration line between this this and neighbor critical point
   };
+  typedef std::vector<CriticalPointNeighbor> CriticalPointNeighborArray;
   enum CriticalPointType{
     MINIMAL = 0,
     SADDLE,
@@ -27,7 +28,7 @@ namespace msc2d{
   struct CriticalPoint{
     CriticalPointType type;        // 0 -- minimal, 1 -- saddle, 2 -- maximal
     int meshIndex;  //index in original mesh
-    std::vector<CriticalPointNeighbor> neighbor; //neighbors are assumed to be counter-clockwise
+    CriticalPointNeighborArray neighbor; //neighbors are assumed to be counter-clockwise
   };
   typedef std::vector<CriticalPoint> CriticalPointArray;
   typedef std::vector<int> PATH;
@@ -49,8 +50,7 @@ namespace msc2d{
     int patchIndex;
     int commonIntegrationLineIndex;
   };
-  typedef std::vector< std::vector< PatchAdjacent> > PatchAdjacentArray; //because the integration line is in counter-clock-wise order, the patch is the same order
-
+  typedef std::vector< std::vector< PatchAdjacent> > PatchAdjacentArray; 
   
   class MSComplex2D{
 
@@ -76,7 +76,9 @@ namespace msc2d{
     */
     int cmpScalarValue(int vert_1, int vert_2) const;
     double calGradient(int vert_1, int vert_2) const;
+    double calPersistence(int cp1_index, int cp2_index) const;
     CriticalPointType getVertexType(int vid) const;
+    
  private:
     boost::shared_ptr<meshlib::Mesh> mesh;
     std::vector<double> scalar_field;
@@ -92,6 +94,7 @@ namespace msc2d{
 
     friend class CPFinder;
     friend class ILTracer;
+    friend class Simplifor;
     friend class QPGenerator;
 
     friend std::istream & operator >> (std::istream&, MSComplex2D&);

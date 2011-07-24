@@ -37,11 +37,12 @@ namespace msc2d{
 
     bool traceIntegrationLine();
  private:
-    bool createWEdge();
-    
+    bool createWEdge();    
     bool traceAscendingPath();    
     bool traceDescendingPath();
-    void setAscendingPathData();    
+    void setAscendingPathData();
+    void unfoldMultiSaddle();
+    void unfoldMultiSaddle(CriticalPoint& cp);
 
     void genCPNeighbor();
     void sortCPNeighbor(CriticalPoint&) const;
@@ -58,7 +59,7 @@ namespace msc2d{
     int getDescendingPathSecondVert(const CriticalPoint& cp, int range_idx);
     std::pair<size_t, size_t> getMinRangeAtSaddle(int curr_vid, int prev_vid);
     std::pair<size_t, size_t> getMinRangeAtJunction(int curr_vid, int prev_vid);
-    
+    bool isNormalSaddle(const CriticalPoint& cp) const;
  private:
     std::vector<WEdge> wedge_vec;
     std::vector<bool> junction_flag;
