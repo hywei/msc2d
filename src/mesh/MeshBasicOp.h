@@ -23,7 +23,7 @@ namespace meshlib{
         bool getInnerFaces(const PATH& loop, FaceHandleArray& fh_vec) const;
         EdgeHandle getEdgeHandle(VertHandle vh1, VertHandle vh2) const;
         HalfEdgeHandle getHalfEdgeHandle(VertHandle vh1, VertHandle vh2) const;
-        
+
         bool getShortestPath(VertHandle start, VertHandle end, PATH& path,
                               const std::set<EdgeHandle>& edge_set) const;
     private:

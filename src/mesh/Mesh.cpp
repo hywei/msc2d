@@ -68,6 +68,18 @@ const HalfEdgeHandleArray& Mesh::getFaceHalfEdges(FaceHandle fh) const{
   return p_Kernel->getFaceArray()[fh].he_handle_vec;
 }
 
+const VertArray& Mesh::getVertexArray() const {
+  return p_Kernel->getVertArray();
+}
+
+const EdgeArray& Mesh::getEdgeArray() const{
+  return p_Kernel->getEdgeArray();
+}
+
+const FaceArray& Mesh::getFaceArray() const{
+  return p_Kernel->getFaceArray();
+}
+
 const HalfEdgeArray& Mesh::getHalfEdgeArray() const{
   return p_Kernel->getHEArray();
 }

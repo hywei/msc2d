@@ -39,6 +39,9 @@ namespace meshlib{
     const EdgeHandleArray& getFaceEdges(FaceHandle fh) const;
     const HalfEdgeHandleArray& getFaceHalfEdges(FaceHandle fh) const;
 
+    const VertArray& getVertexArray() const;
+    const EdgeArray& getEdgeArray() const;
+    const FaceArray& getFaceArray() const;
     const HalfEdgeArray& getHalfEdgeArray() const;
 
     std::pair<VertHandle, VertHandle> getEdgeVertices(EdgeHandle eh) const;

@@ -10,11 +10,14 @@ QPGenerator::QPGenerator(MSComplex2D& _msc): msc(_msc){}
 QPGenerator::~QPGenerator(){}
 
 void QPGenerator::genQuadPatch(){
+  test_flag = true;
   cout << "Generator Quad Patchs" << endl;
   formed_patchs.clear();
   face_patch_index_mp.clear();
   face_patch_index_mp.resize(msc.mesh->getFaceNumber(), -1);
   covered_edge_set.clear();
+  tri_patch_il_index_vec.clear();
+  tri_patch_cp_index_vec.clear();
   for(size_t i=0; i<msc.il_vec.size(); ++i){
     const PATH& path = msc.il_vec[i].path;
     for(int i=0; i<path.size()-1; ++i){
@@ -24,9 +27,11 @@ void QPGenerator::genQuadPatch(){
   }
   genMMSadMapping();
   for(size_t k=0; k<msc.cp_vec.size(); ++k){
-    if(msc.cp_vec[k].type == SADDLE) genQuadPatch(msc.cp_vec[k]);
+    if(msc.cp_vec[k].type == SADDLE) genQuadPatch(k);
   }
+  genTriPatch();
   cout << "Generator " << msc.qp_vec.size() << " quad patchs" << endl;
+
 }
 
 void QPGenerator::genMMSadMapping(){
@@ -44,8 +49,8 @@ void QPGenerator::genMMSadMapping(){
   }
 }
 
-void QPGenerator::genQuadPatch(const CriticalPoint& cp){
-
+void QPGenerator::genQuadPatch(size_t sad_cp_idx){
+  const CriticalPoint& cp = msc.cp_vec[sad_cp_idx];
   for(size_t k=0; k<cp.neighbor.size(); ++k){
     int cp_index1 = cp.neighbor[k].pointIndex;
     int cp_index2 = cp.neighbor[(k+1)%cp.neighbor.size()].pointIndex;
@@ -72,7 +77,6 @@ void QPGenerator::genQuadPatch(const CriticalPoint& cp){
         if(!findPatchInnerFace(patch)){
           cerr << "Cannot find inner faces for patch " << k << endl;
         }
-
       }
     }else{
       //! TODO boundary
@@ -82,85 +86,91 @@ void QPGenerator::genQuadPatch(const CriticalPoint& cp){
       assert(mm_sad_mp.find(mm_pair) != mm_sad_mp.end());
       const vector<int>& sad_index_vec = mm_sad_mp[mm_pair];
       if(sad_index_vec.size() !=1){
-
-        if(!msc.mesh->isBoundaryVertex(cp.meshIndex)){
-          cerr << "There are something mistake at sort critical neighbor! "
-               << __FILE__ << __LINE__ << endl;
-          cout << cp.meshIndex << " ";
-          for(size_t k=0; k<nb_vec.size(); ++k){
-            const CriticalPoint& _cp = msc.cp_vec[nb_vec[k].pointIndex];
-            cout << _cp.meshIndex << " ";
-          }
-          cout << "# " << k << endl;
-        }
+//        if(!msc.mesh->isBoundaryVertex(cp.meshIndex)){
+//          cerr << "There are something mistake at sort critical neighbor! "
+//               << __FILE__ << __LINE__ << endl;
+//          cout << cp.meshIndex << " ";
+//          for(size_t k=0; k<nb_vec.size(); ++k){
+//            const CriticalPoint& _cp = msc.cp_vec[nb_vec[k].pointIndex];
+//            cout << _cp.meshIndex << " ";
+//          }
+//          cout << "# " << k << endl;
+//        }
       }else{
         int il_index1 = cp.neighbor[k].integrationLineIndex;
         int il_index2 = cp.neighbor[(k+1)%cp.neighbor.size()].integrationLineIndex;
 
-        const PATH& path1 = msc.il_vec[il_index1].path;
-        const PATH& path2 = msc.il_vec[il_index2].path;
-        PATH boundary(path2.rbegin(), path2.rend());
-        boundary.insert(boundary.end(), path1.begin()+1, path1.end());
-        const HalfEdgeArray& he_vec = msc.mesh->getHalfEdgeArray();
-        set<int> bd_hes, valid_edge_set;
-        for(size_t i=0; i<boundary.size()-1; ++i){
-          HalfEdgeHandle hh = msc.mesh->getHalfEdgeHandle(boundary[i], boundary[i+1]);
-          bd_hes.insert(hh);
-          valid_edge_set.insert(he_vec[hh].edge_handle);
-        }
-        set<int> visited_faces;
+        tri_patch_il_index_vec.push_back(make_pair(il_index1, il_index2));
+        tri_patch_cp_index_vec.push_back(sad_cp_idx);
+      }
+    }
+  }
+}
 
-        for(size_t i=0; i<boundary.size()-1; ++i){
-          int vid1 = boundary[i], vid2 = boundary[i+1];
-          HalfEdgeHandle hh = msc.mesh->getHalfEdgeHandle(vid1, vid2);
-          HalfEdgeHandle oppo_hh = he_vec[hh].oppo_he_handle;
-          if(bd_hes.find(hh) != bd_hes.end() && bd_hes.find(oppo_hh) != bd_hes.end()) continue;
-          int fid = he_vec[hh].face_handle;
-          if(fid == -1) continue;
-          if(visited_faces.find(fid) == visited_faces.end() && face_patch_index_mp[fid] == -1) {
-            queue <int> q; q.push(fid); visited_faces.insert(fid);
+void QPGenerator::genTriPatch() {
+  for(size_t i=0; i<tri_patch_cp_index_vec.size(); ++i){
+    if(!test_flag) continue;
+    size_t il_index1 = tri_patch_il_index_vec[i].first;
+    size_t il_index2 = tri_patch_il_index_vec[i].second;
+    const IntegrationLine& il1 = msc.il_vec[il_index1];
+    const IntegrationLine& il2 = msc.il_vec[il_index2];
+    size_t cp_index1 = il1.endIndex, cp_index2 = il2.endIndex;
+    const PATH& path1 = msc.il_vec[il_index1].path;
+    const PATH& path2 = msc.il_vec[il_index2].path;
+    PATH boundary(path2.rbegin(), path2.rend());
+    boundary.insert(boundary.end(), path1.begin()+1, path1.end());
+    const HalfEdgeArray& he_vec = msc.mesh->getHalfEdgeArray();
+    set<int> bd_hes, valid_edge_set;
+    for(size_t i=0; i<boundary.size()-1; ++i){
+      HalfEdgeHandle hh = msc.mesh->getHalfEdgeHandle(boundary[i], boundary[i+1]);
+      bd_hes.insert(hh);
+      valid_edge_set.insert(he_vec[hh].edge_handle);
+    }
+    set<int> visited_faces;
 
-            while(!q.empty()){
-              int _fid = q.front(); q.pop();
-              const EdgeHandleArray& eh_vec = msc.mesh->getFaceEdges(_fid);
-              for(size_t i=0; i<eh_vec.size(); ++i) valid_edge_set.insert(eh_vec[i]);
-              const HalfEdgeHandleArray& hh_vec = msc.mesh->getFaceHalfEdges(_fid);
-              for(size_t i=0; i<hh_vec.size(); ++i){
-                if(bd_hes.find(hh_vec[i]) != bd_hes.end()) continue;
-                int eid = he_vec[hh_vec[i]].edge_handle;
-                pair<int, int> verts = msc.mesh->getEdgeVertices(eid);
-                int a = verts.first;
-                if(covered_edge_set.find(eid) != covered_edge_set.end()) continue;
-                int oppo_hh = he_vec[hh_vec[i]].oppo_he_handle;
-                int fh = he_vec[oppo_hh].face_handle;
-                if(fh!= -1 && visited_faces.find(fh) == visited_faces.end()){
-                  q.push(fh); visited_faces.insert(fh);
-                }
-              }
+    for(size_t i=0; i<boundary.size()-1; ++i){
+      int vid1 = boundary[i], vid2 = boundary[i+1];
+      HalfEdgeHandle hh = msc.mesh->getHalfEdgeHandle(vid1, vid2);
+      HalfEdgeHandle oppo_hh = he_vec[hh].oppo_he_handle;
+      if(bd_hes.find(hh) != bd_hes.end() && bd_hes.find(oppo_hh) != bd_hes.end()) continue;
+      int fid = he_vec[hh].face_handle;
+      if(fid == -1) continue;
+      if(visited_faces.find(fid) == visited_faces.end() && face_patch_index_mp[fid] == -1) {
+        queue <int> q; q.push(fid); visited_faces.insert(fid);
+
+        while(!q.empty()){
+          int _fid = q.front(); q.pop();
+          const EdgeHandleArray& eh_vec = msc.mesh->getFaceEdges(_fid);
+          for(size_t i=0; i<eh_vec.size(); ++i) valid_edge_set.insert(eh_vec[i]);
+          const HalfEdgeHandleArray& hh_vec = msc.mesh->getFaceHalfEdges(_fid);
+          for(size_t i=0; i<hh_vec.size(); ++i){
+            if(bd_hes.find(hh_vec[i]) != bd_hes.end()) continue;
+            int eid = he_vec[hh_vec[i]].edge_handle;
+            if(covered_edge_set.find(eid) != covered_edge_set.end()) continue;
+            int oppo_hh = he_vec[hh_vec[i]].oppo_he_handle;
+            int fh = he_vec[oppo_hh].face_handle;
+            if(fh!= -1 && visited_faces.find(fh) == visited_faces.end() &&
+               face_patch_index_mp[fh] == -1){
+              q.push(fh); visited_faces.insert(fh);
             }
           }
         }
-        IntegrationLine dual_il;
-        dual_il.startIndex = cp_index1; dual_il.endIndex = cp_index2;
-        int start_vid = msc.cp_vec[cp_index1].meshIndex;
-        int end_vid = msc.cp_vec[cp_index2].meshIndex;
-        if(msc.mesh->getShortestPath(start_vid, end_vid, dual_il.path, valid_edge_set)){
-            msc.il_vec.push_back(dual_il);
-            msc.qp_vec.push_back(QuadPatch());
-            QuadPatch& patch = msc.qp_vec[msc.qp_vec.size()-1];
-            patch.boundaryIntegrationLineIndex.push_back(il_index1);
-            patch.boundaryIntegrationLineIndex.push_back(msc.il_vec.size()-1);
-            patch.boundaryIntegrationLineIndex.push_back(il_index2);
-            if(!findPatchInnerFace(patch)){
-              cerr <<"Cannot find inner face of patch " << msc.qp_vec.size() << endl;
-            }
-            if(patch.face.size() > 200){
-              cout << il_index1 << " " << il_index2 << endl;
-              cout << msc.qp_vec.size() << endl;
-            }
-        }
       }
-
+    }
+    IntegrationLine dual_il;
+    dual_il.startIndex = cp_index1; dual_il.endIndex = cp_index2;
+    int start_vid = msc.cp_vec[cp_index1].meshIndex;
+    int end_vid = msc.cp_vec[cp_index2].meshIndex;
+    if(msc.mesh->getShortestPath(start_vid, end_vid, dual_il.path, valid_edge_set)){
+        msc.il_vec.push_back(dual_il);
+        msc.qp_vec.push_back(QuadPatch());
+        QuadPatch& patch = msc.qp_vec[msc.qp_vec.size()-1];
+        patch.boundaryIntegrationLineIndex.push_back(il_index1);
+        patch.boundaryIntegrationLineIndex.push_back(msc.il_vec.size()-1);
+        patch.boundaryIntegrationLineIndex.push_back(il_index2);
+        if(!findPatchInnerFace(patch)){
+          cerr <<"Cannot find inner face of patch " << msc.qp_vec.size() << endl;
+        }
     }
   }
 }
@@ -200,7 +210,7 @@ bool QPGenerator::findPatchInnerFace(QuadPatch& patch) const{
     covered_edge_set.insert(eid);
   }
 
-  bool flag = msc.mesh->getInnerFaces(bd_loop, patch.face);
+  bool flag = getInnerFaces(bd_loop, patch.face);
   if(flag){
     for(size_t i=0; i<patch.face.size(); ++i){
       int fid = patch.face[i];
@@ -214,6 +224,74 @@ bool QPGenerator::findPatchInnerFace(QuadPatch& patch) const{
     }
   }
   return flag;
+}
+
+bool QPGenerator::getInnerFaces(const PATH &loop, std::vector<int>& fh_vec) const{
+  fh_vec.clear();
+  if(loop.size()<3 || loop[0] != loop[loop.size()-1]) return false;
+  const VertArray& vert_vec = msc.mesh->getVertexArray();
+  const FaceArray& face_vec = msc.mesh->getFaceArray();
+  const HalfEdgeArray& he_vec = msc.mesh->getHalfEdgeArray();
+  for(size_t k=0; k<loop.size(); ++k) {
+    const Vert& vert = vert_vec[loop[k]];
+    if(Util::IsSetFlag(vert.flag, NONMANIFOLD_VERT)) return false;
+  }
+
+  set<HalfEdgeHandle> bd_edge_set;
+  for(size_t k=0; k<loop.size()-1; ++k) {
+    HalfEdgeHandle hh = msc.mesh->getHalfEdgeHandle(loop[k], loop[k+1]);
+    if(hh == -1){
+      cerr << "Not a close loop" << endl;
+      return false;
+    }
+    bd_edge_set.insert(hh);
+  }
+
+  set<FaceHandle> faces;
+  queue<FaceHandle> q;
+
+  for(size_t k=0; k<loop.size()-1; ++k){
+    HalfEdgeHandle hh = msc.mesh->getHalfEdgeHandle(loop[k], loop[k+1]);
+    HalfEdgeHandle oppo_hh = he_vec[hh].oppo_he_handle;
+    if(bd_edge_set.find(hh) != bd_edge_set.end() &&
+       bd_edge_set.find(oppo_hh) != bd_edge_set.end()) continue;
+    const HalfEdge& he = he_vec[hh];
+    FaceHandle fh = he.face_handle;
+    if(fh == -1) return false;
+    if(faces.find(fh) == faces.end()){
+      q.push(fh); faces.insert(fh);
+      while(!q.empty()){
+        FaceHandle fh = q.front(); q.pop();
+        if(face_patch_index_mp[fh] != -1) return false;
+        const HalfEdgeHandleArray& hh_vec = face_vec[fh].he_handle_vec;
+        for(size_t k=0; k<hh_vec.size(); ++k){
+          if(bd_edge_set.find(hh_vec[k]) != bd_edge_set.end()) continue;
+          HalfEdgeHandle oppo_hh = he_vec[hh_vec[k]].oppo_he_handle;
+          FaceHandle fh = he_vec[oppo_hh].face_handle;
+          if(fh != -1 && faces.find(fh) == faces.end()) {
+            faces.insert(fh);
+            q.push(fh);
+          }
+        }
+      }// end while
+    }
+  }
+
+  // check valid
+  for(size_t k=0; k<loop.size()-1; ++k) {
+    HalfEdgeHandle hh = msc.mesh->getHalfEdgeHandle(loop[k], loop[k+1]);
+    HalfEdgeHandle oppo_hh = he_vec[hh].oppo_he_handle;
+    int fh1 = he_vec[hh].face_handle;
+    int fh2 = he_vec[oppo_hh].face_handle;
+    if(faces.find(fh1) != faces.end() && faces.find(fh2) != faces.end()){
+      cerr << "Not a valid face set" << endl;
+      return false;
+    }
+  }
+
+  fh_vec.clear(); fh_vec.resize(faces.size());
+  fh_vec.assign(faces.begin(), faces.end());
+  return true;
 }
 
 } // end namespace 

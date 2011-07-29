@@ -70,6 +70,9 @@ bool Simplifor::cancel(int cancelIL_index){
 
   if(s.neighbor.size() == 1) { removeSad(scp_index); return false; }
 
+  if(cancelIL_index == 5265){
+   // cout << "Debug" << endl;
+  }
   int cancel_nb_idx = getILIndexInNeighbor(s, cancelIL_index);
 
   int bridgeIL_index;
@@ -81,6 +84,11 @@ bool Simplifor::cancel(int cancelIL_index){
   if(is_ascending_il1 == is_ascending_il2) bridgeIL_index = next_il_index1; // at boundary
   else if(is_ascending_il1 == is_ascending_il3) bridgeIL_index = next_il_index2;
   else{ // at boundary
+    removeSad(scp_index);
+    return false;
+  }
+
+  if(bridgeIL_index == cancelIL_index) {
     removeSad(scp_index);
     return false;
   }
