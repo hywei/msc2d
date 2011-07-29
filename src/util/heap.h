@@ -2,6 +2,7 @@
 //
 //////////////////////////////////////////////////////////////////////
 
+
 #if !defined(AFX_HEAP_H__D95FA3CF_0DC1_4A82_9DE2_B872CF7EEAFA__INCLUDED_)
 #define AFX_HEAP_H__D95FA3CF_0DC1_4A82_9DE2_B872CF7EEAFA__INCLUDED_
 

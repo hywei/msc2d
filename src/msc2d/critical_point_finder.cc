@@ -64,6 +64,7 @@ bool CPFinder::findCriticalPoints(){
 
 CriticalPointType CPFinder::getPointType(int vid) const{  
   const VertHandleArray& adj_vertices = mesh.getAdjVertices(vid);
+  if(adj_vertices.size() == 0) return REGULAR;
   vector<bool> adj_vflag;
 
   for(size_t k=0; k<adj_vertices.size(); ++k){

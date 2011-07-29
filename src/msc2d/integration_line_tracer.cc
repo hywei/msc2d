@@ -42,7 +42,7 @@ bool ILTracer::createWEdge(){
     WEdge& we = wedge_vec[vid];
     const VertHandleArray& adj_vertices = mesh.getAdjVertices(vid);
     size_t n = adj_vertices.size();
-    
+    if(n==0) continue;
     if(msc.getVertexType(vid) == MAXIMAL){
       we.max_ranges.push_back(make_pair(0, n)); continue;
     }else if(msc.getVertexType(vid) == MINIMAL){
@@ -53,7 +53,7 @@ bool ILTracer::createWEdge(){
     //! get the first max-range's start position
     for(size_t i=0; i<n; ++i){
       if(msc.cmpScalarValue(vid, adj_vertices[i]) == -1){
-        if( mesh.isBoundaryVertex(adj_vertices[i]) && i==0){
+        if( mesh.isBoundaryVertex(vid) && i==0){
           start_maxp = 0; break;
         }else{
           if(msc.cmpScalarValue(vid, adj_vertices[prev(vid, i)]) == 1){
@@ -66,10 +66,10 @@ bool ILTracer::createWEdge(){
 
     size_t start_idx(start_maxp);
     for(size_t i=next(vid, start_maxp), j=0; j<n; i=next(vid, i), ++j){
-      if(mesh.isBoundaryVertex(vid) && i==n-1){ //! handle boundary
-        if(msc.cmpScalarValue(vid, adj_vertices[i]) == -1){
+      if(mesh.isBoundaryVertex(vid) && i==n){ //! handle boundary
+        if(msc.cmpScalarValue(vid, adj_vertices[i-1]) == -1){
           we.max_ranges.push_back(make_pair(start_idx, n)); start_idx = 0;
-        }else if(msc.cmpScalarValue(vid, adj_vertices[i]) == 1){
+        }else if(msc.cmpScalarValue(vid, adj_vertices[i-1]) == 1){
           we.min_ranges.push_back(make_pair(start_idx, n)); start_idx = 0;
         }
       }else{ //! general case
@@ -102,13 +102,13 @@ bool ILTracer::traceAscendingPath(){
         PATH& mesh_path = il.path; mesh_path.push_back(curr_vid);
         do{
           pair<int, int> range;// get right range to trace gradient
-          const WEdge& we = wedge_vec[curr_vid];
           if(mesh_path.size()==1) range = max_ranges[k];
           else{
             if(msc.getVertexType(curr_vid) == SADDLE){ // select the previous adjacent maxrange              
               int range_idx = getRangeIndex(curr_vid, prev_vid);              
               if(wedge_vec[curr_vid].max_ranges.size() <= range_idx){//at boundary 
                 --range_idx;
+                error_rule_vec.push_back(make_pair(curr_vid, range_idx+1));
               }
               range = wedge_vec[curr_vid].max_ranges[range_idx];
             }else range = wedge_vec[curr_vid].max_ranges[0];
@@ -161,9 +161,10 @@ int ILTracer::getGradDirection(int vid, const pair<size_t, size_t>& range) const
 int ILTracer::getRangeIndex(int vid, int adj_vid) const{
   const vector<int>& adj_vertices = mesh.getAdjVertices(vid);
   if(!Util::isIn(adj_vertices, adj_vid)) return -1;
+  const WEdge& we = wedge_vec[vid];
   vector<pair<size_t, size_t> >  ranges;
-  if(msc.cmpScalarValue(vid, adj_vid) == 1) ranges = wedge_vec[vid].min_ranges;
-  else ranges = wedge_vec[vid].max_ranges;
+  if(msc.cmpScalarValue(vid, adj_vid) == 1) ranges = we.min_ranges;
+  else ranges = we.max_ranges;
   for(size_t k=0; k<ranges.size(); ++k){
     for(size_t j=ranges[k].first; j!=ranges[k].second; j=next(vid, j)){
       if(adj_vertices[j] == adj_vid) return k;
@@ -177,15 +178,13 @@ bool ILTracer::traceDescendingPath(){
   cout << "Trace descending path" << endl;
   for(vector<CriticalPoint>::iterator it=msc.cp_vec.begin(); it!=msc.cp_vec.end(); ++it){
     if(it->type == SADDLE){
-      if(it->meshIndex == 1709)
-        cout << "Debug" << endl;
       const vector<pair<size_t, size_t> >& min_ranges = wedge_vec[it->meshIndex].min_ranges;
       for(size_t k=0; k<min_ranges.size(); ++k){
         path_side_record.clear();
         int prev_vid = it->meshIndex;
         int curr_vid = getDescendingPathSecondVert(*it, k);
-        msc.il_vec.push_back(IntegrationLine());        
-        IntegrationLine& il=msc.il_vec[msc.il_vec.size()-1];
+
+        IntegrationLine il;
         PATH& path = il.path;
         path.push_back(prev_vid); path.push_back(curr_vid);
         while(msc.getVertexType(curr_vid) != MINIMAL){
@@ -197,14 +196,17 @@ bool ILTracer::traceDescendingPath(){
               range = getMinRangeAtJunction(curr_vid, prev_vid);
             }else range = wedge_vec[curr_vid].min_ranges[0];
           }
+          if(range.first == -1 && range.second == -1) break;
           prev_vid = curr_vid;
           curr_vid = getGradDirection(curr_vid, range);
           assert(curr_vid != -1);
           path.push_back(curr_vid);
           assert(path.size() < mesh.getEdgeNumber());
         }
+        if(msc.getVertexType(curr_vid) != MINIMAL) continue;
         il.startIndex = msc.vert_cp_index_mp[it->meshIndex];
         il.endIndex = msc.vert_cp_index_mp[curr_vid];
+        msc.il_vec.push_back(il);
       }
     }
   }
@@ -216,13 +218,21 @@ int ILTracer::getDescendingPathSecondVert(const CriticalPoint& cp, int range_ind
   const pair<size_t, size_t>& min_r = wedge_vec[cp.meshIndex].min_ranges[range_index];
   pair<size_t, size_t> range= min_r;
   int last_adj_vid(-1);
+  bool err_rule = Util::isIn(error_rule_vec, make_pair(cp.meshIndex, range_index));
   for(size_t k=min_r.first; k!=min_r.second; k=next(cp.meshIndex, k)){
     int adj_vid = adj_vertices[k];
-    if(Util::isIn(in_vertices[cp.meshIndex], adj_vid)){ range.first = k; last_adj_vid = adj_vid; }
+    if(Util::isIn(in_vertices[cp.meshIndex], adj_vid)){
+      last_adj_vid = adj_vid;
+      if(!err_rule) {range.first = k; }
+      else { range.second = next(cp.meshIndex,k); break;}
+    }
   }
   if(last_adj_vid !=-1){
     const vector<size_t>& paths = edge_path_mp[make_pair(last_adj_vid, cp.meshIndex)];
-    for(size_t k=0; k<paths.size(); ++k) path_side_record[paths[k]] = 1; // back direction
+    for(size_t k=0; k<paths.size(); ++k){
+      if(!err_rule) path_side_record[paths[k]] = 1; // back direction
+      else path_side_record[paths[k]] = -1;
+    }
   }
   return getGradDirection(cp.meshIndex, range);
 }
@@ -281,19 +291,23 @@ pair<size_t, size_t> ILTracer::getMinRangeAtSaddle(int sadd_vid, int prev_vid) {
         assert(path_ids.size() > 0);
         side = path_side_record[path_ids[0]];
       }
-    }else if(adj_vid == prev_vid){ side=1; break; }
+    }else if(adj_vid == prev_vid){ side=1; }
+    if(side !=0) break;
   }
   assert(side != 0);
   int min_range_idx(-1);
   size_t max_range_num = wedge_vec[sadd_vid].max_ranges.size();
   size_t min_range_num = wedge_vec[sadd_vid].min_ranges.size();
   if(side == -1) {
-    min_range_idx = max_range_idx;
-    if(min_range_idx >= min_range_num) min_range_idx = max_range_idx-1;
+    if(msc.mesh->isBoundaryVertex(sadd_vid) && max_range.second == adj_vertices.size()) return make_pair(-1, -1);
+    int _vid = adj_vertices[max_range.second];
+    min_range_idx = getRangeIndex(sadd_vid, _vid);
   }else{
-    min_range_idx = (max_range_idx + max_range_num-1)%max_range_num;
-    if(min_range_idx >= min_range_num) min_range_idx = max_range_idx;
+    if(max_range.first == 0 && msc.mesh->isBoundaryVertex(sadd_vid)) return make_pair(-1, -1);
+    int _vid = adj_vertices[prev(sadd_vid, max_range.first)];
+    min_range_idx = getRangeIndex(sadd_vid, _vid);
   }
+  assert(min_range_idx != -1);
   const pair<size_t, size_t>& min_range = wedge_vec[sadd_vid].min_ranges[min_range_idx];
   size_t first = min_range.first, second = min_range.second;
   for(size_t k=min_range.first; k!=min_range.second; k=next(sadd_vid, k)){
@@ -324,17 +338,27 @@ void ILTracer::sortCPNeighbor(CriticalPoint& cp) const{
   vector<CriticalPointNeighbor> nb_bak = cp.neighbor;
   if(cp.type == SADDLE){
     cp.neighbor.clear();
+
     const WEdge& we = wedge_vec[cp.meshIndex];
     const VertHandleArray& adj_vertices = mesh.getAdjVertices(cp.meshIndex);
-    bool flag = true;
-    pair<size_t, size_t> range;
-    for(size_t i=0; i<we.max_ranges.size()+we.min_ranges.size(); ++i, flag = !flag){
-      range = flag ? we.max_ranges[i/2] : we.min_ranges[i/2];
-      for(size_t k=range.first; k!=range.second; k=next(cp.meshIndex, k)){
-        int adj_vid = adj_vertices[k];
-        for(size_t j=0; j<nb_bak.size(); ++j){
-          const IntegrationLine& il = msc.il_vec[nb_bak[j].integrationLineIndex];
-          if(adj_vid == il.path[1]) cp.neighbor.push_back(nb_bak[j]);
+    if(msc.mesh->isBoundaryVertex(cp.meshIndex)){
+      for(size_t k=0; k<adj_vertices.size(); ++k){
+        for(size_t i=0; i<nb_bak.size(); ++i){
+          const IntegrationLine& il = msc.il_vec[nb_bak[i].integrationLineIndex];
+          if(il.path[1] == adj_vertices[k]) cp.neighbor.push_back(nb_bak[i]);
+        }
+      }
+    }else{
+      bool flag = true;
+      pair<size_t, size_t> range;
+      for(size_t i=0; i<we.max_ranges.size()+we.min_ranges.size(); ++i, flag = !flag){
+        range = flag ? we.max_ranges[i/2] : we.min_ranges[i/2];
+        for(size_t k=range.first; k!=range.second; k=next(cp.meshIndex, k)){
+          int adj_vid = adj_vertices[k];
+          for(size_t j=0; j<nb_bak.size(); ++j){
+            const IntegrationLine& il = msc.il_vec[nb_bak[j].integrationLineIndex];
+            if(adj_vid == il.path[1]) cp.neighbor.push_back(nb_bak[j]);
+          }
         }
       }
     }
@@ -369,30 +393,36 @@ void ILTracer::sortCPNeighbor(CriticalPoint& cp) const{
   }
   
   if(cp.neighbor.size() != nb_bak.size()){
+    cout << cp.neighbor.size() << " " << nb_bak.size() << " ## ";
     cout << cp.meshIndex << " " << msc.vert_cp_index_mp[cp.meshIndex];
     if(cp.type == SADDLE) cout << " SAD" << endl;
     else if(cp.type == MAXIMAL) cout << " MAX" << endl;
     else cout << " MIN"<<endl;
+    cout << "Missed integration lines: ";
+    for(size_t k=0; k<nb_bak.size(); ++k){
+      if(!Util::isIn(cp.neighbor, nb_bak[k])) cout << nb_bak[k].integrationLineIndex << " ";
+    }
+    cout << endl;
   }
-  assert(cp.neighbor.size() == nb_bak.size());
+ // assert(cp.neighbor.size() == nb_bak.size());
   for(size_t k=0; k<cp.neighbor.size(); ++k){
     if(!Util::isIn(nb_bak, cp.neighbor[k])) {
       cerr <<"Warning: there are something wrong on sort critial point neighbor" << endl;
     }
   }
-  if(cp.meshIndex == 1709 || cp.meshIndex == 1712){
-    cout << cp.meshIndex <<": ";
-    cout << "\t CP_Vert: ";
-    for(size_t i=0; i<cp.neighbor.size(); ++i){
-      const CriticalPoint& _cp = msc.cp_vec[cp.neighbor[i].pointIndex];
-      cout << _cp.meshIndex << " ";
-    }
-    cout << endl << "\t IL_Index: ";
-    for(size_t i=0; i<cp.neighbor.size(); ++i){
-      cout << cp.neighbor[i].integrationLineIndex<<" ";
-    }
-    cout << endl;
-  }
+//  if(cp.meshIndex == 5089){
+//    cout << cp.meshIndex <<": ";
+//    cout << "\t CP_Vert: ";
+//    for(size_t i=0; i<cp.neighbor.size(); ++i){
+//      const CriticalPoint& _cp = msc.cp_vec[cp.neighbor[i].pointIndex];
+//      cout << _cp.meshIndex << " ";
+//    }
+//    cout << endl << "\t IL_Index: ";
+//    for(size_t i=0; i<cp.neighbor.size(); ++i){
+//      cout << cp.neighbor[i].integrationLineIndex<<" ";
+//    }
+//    cout << endl;
+//  }
 }
 
 void ILTracer::splitSaddle(vector<PATH>& path_vec, Tree& t) const{
@@ -403,11 +433,13 @@ void ILTracer::splitSaddle(vector<PATH>& path_vec, Tree& t) const{
       leaf = t.hash++; // split this saddle with a visual node
       t.node_vert_mp[leaf] =  path[0]; // make node-vert mapping
       //! update other paths which pass this vertex
+      int curr_vid = path[0], next_vid = path[1];
       for(size_t j=0; j<path_vec.size(); ++j){
         PATH& _path = path_vec[j];
         for(size_t i=1; i<_path.size(); ++i)
-          if(_path[i-1] == path[0] && _path[i] == path[1])
+          if(_path[i-1] == curr_vid && _path[i] == next_vid){
             _path[i-1]  = leaf;        
+          }
       }
     }
     t.leaves.push_back(leaf);
@@ -420,24 +452,33 @@ void ILTracer::replaceSaddle(vector<PATH>& path_vec, Tree& t) const{
     PATH& path = path_vec[k];
     for(size_t i=1; i<path.size()-1; ++i){
       if(Util::isIn(t.leaves, path[i])){ // a saddle
-        assert(msc.getVertexType(path[i]) == SADDLE);
+        int curr_vid = path[i], next_vid = path[i+1];
+        if(t.node_vert_mp.find(path[i]) != t.node_vert_mp.end())
+          curr_vid = t.node_vert_mp[path[i]];
+        if(t.node_vert_mp.find(path[i+1]) != t.node_vert_mp.end())
+          next_vid = t.node_vert_mp[path[i+1]];
+        assert(msc.getVertexType(curr_vid) == SADDLE);
         int visual_node = t.hash++;
         int mapping_vert(-1);
         //! get the mapping vertex index
-        bool ascending = (msc.cmpScalarValue(path[i], path[i+1]) == 1) ? false : true;
-        const WEdge& we = wedge_vec[path[i]];
-        const VertHandleArray& adj_vertices = mesh.getAdjVertices(path[i]);
-        int r_index = getRangeIndex(path[i], path[i+1]);        
+        bool ascending = (msc.cmpScalarValue(curr_vid, next_vid) == 1) ? false : true;
+        const WEdge& we = wedge_vec[curr_vid];
+        const VertHandleArray& adj_vertices = mesh.getAdjVertices(curr_vid);
+        int r_index = getRangeIndex(curr_vid, next_vid);
         if(ascending){
           int next_r_index = (r_index+1)%we.max_ranges.size();
-          if(next_r_index == r_index)//! at boundary
-            mapping_vert = adj_vertices[we.min_ranges[r_index].second];
+          if(next_r_index == r_index){//! at boundary
+            //mapping_vert = adj_vertices[we.min_ranges[r_index].second];
+            mapping_vert = curr_vid;
+          }
           else
             mapping_vert = adj_vertices[we.max_ranges[next_r_index].first];          
         }else{
           int next_r_index = (r_index+1)%we.min_ranges.size();
-          if(next_r_index == r_index)
-            mapping_vert = adj_vertices[we.max_ranges[r_index].second];
+          if(next_r_index == r_index){
+            //mapping_vert = adj_vertices[we.max_ranges[r_index].second];
+            mapping_vert = curr_vid;
+          }
           else
             mapping_vert = adj_vertices[we.min_ranges[next_r_index].first];
         }
@@ -503,6 +544,8 @@ void ILTracer::traverseTree(Tree& tree, vector<int>& il_index_vec) const{
       if(im != tree.node_vert_mp.end()) children[k] = im->second;
     }
     int parent = tree.parent[node];
+    im = tree.node_vert_mp.find(parent);
+    if(im != tree.node_vert_mp.end()) parent = im->second;
     int vid = node;
     im = tree.node_vert_mp.find(node);
     if(im != tree.node_vert_mp.end())  vid = im->second;
@@ -511,18 +554,28 @@ void ILTracer::traverseTree(Tree& tree, vector<int>& il_index_vec) const{
     if(parent == -1) out_index = 0;
     else out_index = distance(adj_vertices.begin(),
                               find(adj_vertices.begin(), adj_vertices.end(), parent));
-    for(size_t k=0, i=out_index; k<adj_vertices.size(); ++k, i=next(vid,i)){
-      int adj_vid = adj_vertices[i];
-      size_t idx = distance(children.begin(), find(children.begin(), children.end(), adj_vid));
+    size_t i=out_index, idx;
+    for(; i<adj_vertices.size(); ++i){
+      idx = distance(children.begin(), find(children.begin(), children.end(), adj_vertices[i]));
       if(idx != children.size()) st.push(subnodes[idx]);
     }
+    // speical case for boundary saddle
+    idx = distance(children.begin(), find(children.begin(), children.end(), vid));
+    if(idx != children.size()) st.push(subnodes[idx]);
+    for(i=0; i!=out_index; ++i){
+      idx = distance(children.begin(), find(children.begin(), children.end(), adj_vertices[i]));
+      if(idx != children.size()) st.push(subnodes[idx]);
+    }
+
   } 
 }
 
 void ILTracer::unfoldMultiSaddle(){
   for(size_t k=0; k<msc.cp_vec.size(); ++k){
-    if(msc.cp_vec[k].type == SADDLE && !isNormalSaddle(msc.cp_vec[k]))
+    if(msc.cp_vec[k].type == SADDLE && !isNormalSaddle(msc.cp_vec[k])){
+      cout << "unfold multi-saddle " << msc.cp_vec[k].meshIndex << endl;
       unfoldMultiSaddle(msc.cp_vec[k]);
+    }
   }
 }
 
@@ -532,44 +585,59 @@ void ILTracer::unfoldMultiSaddle(CriticalPoint& cp){
     CriticalPoint new_cp;
     new_cp.meshIndex = cp.meshIndex; new_cp.type = SADDLE;
     IntegrationLine new_il1, new_il2;
-    int new_cp_idx = msc.cp_vec.size() - 1;
-    int new_il1_idx(msc.il_vec.size()-2);
-    int new_il2_idx(msc.il_vec.size()-1);
+    int new_cp_idx = msc.cp_vec.size() ;
+    int new_il1_idx(msc.il_vec.size());
+    int new_il2_idx(msc.il_vec.size()+1);
     CriticalPointNeighbor new_nb1, new_nb2;
     
-    new_il1 = msc.il_vec[cp.neighbor[1].integrationLineIndex];
+    new_il1 = msc.il_vec[cp.neighbor[0].integrationLineIndex];
     new_il1.startIndex = new_cp_idx;    
-    new_nb1.pointIndex = cp.neighbor[1].pointIndex;
+    new_nb1.pointIndex = cp.neighbor[0].pointIndex;
     new_nb1.integrationLineIndex = new_il1_idx;    
      
     // set new saddle's neighbor
     new_cp.neighbor.push_back(new_nb1);
     new_cp.neighbor.push_back(cp.neighbor[1]);
     // update two max/min points neighbor
-    CriticalPointNeighborArray::iterator iter1, iter2;
-    CriticalPoint& m1 = msc.cp_vec[cp.neighbor[1].pointIndex];
-    iter1 = find(m1.neighbor.begin(), m1.neighbor.end(), cp.neighbor[1]);
-    assert(iter1 != m1.neighbor.end());
-    m1.neighbor.insert(iter1, new_nb1);
-
-    msc.cp_vec.push_back(new_cp);
+    int nb_idx1, nb_idx2;
+    CriticalPoint& m1 = msc.cp_vec[cp.neighbor[0].pointIndex];
+    nb_idx1 = getNeighborIndex(m1, cp.neighbor[0].integrationLineIndex);
+    assert(nb_idx1 != -1);
+    CriticalPointNeighbor new_nb3;
+    new_nb3.pointIndex = new_cp_idx;
+    new_nb3.integrationLineIndex = new_il1_idx;
+    m1.neighbor.insert(m1.neighbor.begin()+nb_idx1, new_nb3);
     msc.il_vec.push_back(new_il1);
+    // update il
+    IntegrationLine& il1 = msc.il_vec[cp.neighbor[1].integrationLineIndex];
+    il1.startIndex = new_cp_idx;
+    CriticalPoint& m3 = msc.cp_vec[cp.neighbor[1].pointIndex];
+    int nb_idx3 = getNeighborIndex(m3, cp.neighbor[1].integrationLineIndex);
+    m3.neighbor[nb_idx3].pointIndex = new_cp_idx;
     
     if(!bd_flag){ // non-boundary saddle
-      new_il2 = msc.il_vec[cp.neighbor[2].integrationLineIndex];
+      new_il2 = msc.il_vec[cp.neighbor[3].integrationLineIndex];
       new_il2.startIndex = new_cp_idx;
-      new_nb2.pointIndex = cp.neighbor[2].pointIndex;
+      new_nb2.pointIndex = cp.neighbor[3].pointIndex;
       new_nb2.integrationLineIndex = new_il2_idx;
-      new_cp.neighbor.push_back(new_nb2);
       new_cp.neighbor.push_back(cp.neighbor[2]);
-      CriticalPoint& m2 = msc.cp_vec[cp.neighbor[2].pointIndex];   
-      iter2 = find(m2.neighbor.begin(), m2.neighbor.end(), cp.neighbor[2]);
-      assert(iter2 != m2.neighbor.end());    
-      m2.neighbor.insert(iter2+1, new_nb2);
-      cp.neighbor.erase(cp.neighbor.begin()+1);
-
+      new_cp.neighbor.push_back(new_nb2);
+      CriticalPoint& m2 = msc.cp_vec[cp.neighbor[3].pointIndex];
+      nb_idx2 = getNeighborIndex(m2, cp.neighbor[3].integrationLineIndex);
+      assert(nb_idx2 != -1);
+      CriticalPointNeighbor new_nb4;
+      new_nb4.integrationLineIndex = new_il2_idx;
+      new_nb4.pointIndex = new_cp_idx;
+      m2.neighbor.insert(m2.neighbor.begin()+nb_idx2+1, new_nb4);
       msc.il_vec.push_back(new_il2);
+
+      IntegrationLine& il3 = msc.il_vec[cp.neighbor[2].integrationLineIndex];
+      il3.startIndex = new_cp_idx;
+      CriticalPoint& m4 = msc.cp_vec[cp.neighbor[2].pointIndex];
+      int nb_idx4 = getNeighborIndex(m4, cp.neighbor[2].integrationLineIndex);
+      m4.neighbor[nb_idx4].pointIndex = new_cp_idx;
     }
+    msc.cp_vec.push_back(new_cp);
     if(bd_flag) cp.neighbor.erase(cp.neighbor.begin());
     else{ // remove two neighbor
       cp.neighbor.erase(cp.neighbor.begin()+1);
@@ -578,10 +646,48 @@ void ILTracer::unfoldMultiSaddle(CriticalPoint& cp){
   }
 }
 
+void ILTracer::unfoldBoundaryMultiSaddle(CriticalPoint& cp){
+  CriticalPointNeighborArray nb_vec = cp.neighbor;
+  const VertHandleArray& adj_vertices = msc.mesh->getAdjVertices(cp.meshIndex);
+  for(size_t k=1; k<adj_vertices.size()-1; ++k){
+    int adj_vid = adj_vertices[k];
+    for(size_t i=0; i<cp.neighbor.size(); ++i){
+      const IntegrationLine& il = msc.il_vec[cp.neighbor[i].integrationLineIndex];
+      if(il.path[1] == adj_vid){ nb_vec.push_back(cp.neighbor[i]); break; }
+    }
+  }
+  assert(cp.neighbor.size()>4);
+  size_t flag = cp.neighbor.size();
+  while(nb_vec.size() != 4){
+    CriticalPoint new_cp; new_cp.meshIndex = cp.meshIndex; new_cp.type = SADDLE;
+    IntegrationLine new_il0 = msc.il_vec[cp.neighbor[0].integrationLineIndex];
+    IntegrationLine new_il1 = msc.il_vec[cp.neighbor[3].integrationLineIndex];
+
+  }
+}
+
 bool ILTracer::isNormalSaddle(const CriticalPoint& cp) const{
   if(cp.type != SADDLE) return false;
-  if(mesh.isBoundaryVertex(cp.meshIndex)) return cp.neighbor.size() <= 3;
-  return cp.neighbor.size() == 4;
+//  CriticalPointNeighborArray nb_vec = cp.neighbor;
+//  if(mesh.isBoundaryVertex(cp.meshIndex)){
+//    const VertHandleArray& adj_vertices = msc.mesh->getAdjVertices(cp.meshIndex);
+//    for(size_t k=1; k<adj_vertices.size()-1; ++k){
+//      int adj_vid = adj_vertices[k];
+//      for(size_t i=0; i<cp.neighbor.size(); ++i){
+//        const IntegrationLine& il = il_vec[cp.neighbor[i].integrationLineIndex];
+//        if(il.path[1] == adj_vid){ nb_vec.push_back(i); break; }
+//      }
+//    }
+//  }
+//  return nb_vec.size() == 4;
+  return cp.neighbor.size() <=4;
+}
+
+int ILTracer::getNeighborIndex(const CriticalPoint& cp, int il_index) const{
+    for(size_t k=0; k<cp.neighbor.size(); ++k){
+        if(cp.neighbor[k].integrationLineIndex == il_index) return k;
+    }
+    return -1;
 }
 
 } // end namespace

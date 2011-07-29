@@ -19,7 +19,8 @@ namespace msc2d{
     class PersPairCmp{
    public:
       bool operator()(const PersPair& lhs, const PersPair& rhs) const{
-        return lhs.second < rhs.second;
+        if(lhs.first == rhs.first) return lhs.second < rhs.second;
+        return lhs.first < rhs.first;
       }
     };
     
@@ -38,17 +39,15 @@ namespace msc2d{
     void update();
     void refinePath();
     int getILIndexInNeighbor(const CriticalPoint& cp, int il_index) const;
-
-    bool cmpPersPair(const PersPair& lhs, const PersPair& rhs) const{
-      return lhs.second < rhs.second;
-    }
+    bool isAscendingIL(const IntegrationLine& il) const;
     
  private:
     MSComplex2D& msc;
     CriticalPointArray& cp_vec;
     IntegrationLineArray& il_vec;
 
-    std::set<PersPair, PersPairCmp> persistence_set;
+    double cancel_threshold;
+    std::map<size_t, double> persistence_map;
     std::vector<int> removed_il_flag;
     std::vector<int> removed_cp_flag;
     double sum_persistence;

@@ -2,6 +2,7 @@
 #define MESHLIB_MESHBASICOP_H_
 
 #include <vector>
+#include <set>
 #include "../common/types.h"
 #include "MeshElement.h"
 
@@ -23,6 +24,8 @@ namespace meshlib{
         EdgeHandle getEdgeHandle(VertHandle vh1, VertHandle vh2) const;
         HalfEdgeHandle getHalfEdgeHandle(VertHandle vh1, VertHandle vh2) const;
         
+        bool getShortestPath(VertHandle start, VertHandle end, PATH& path,
+                              const std::set<EdgeHandle>& edge_set) const;
     private:
         void genEdgeInfo();
         void genHalfEdgeDS(); //! only be call for manifold mesh

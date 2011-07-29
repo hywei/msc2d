@@ -43,6 +43,7 @@ namespace msc2d{
     void setAscendingPathData();
     void unfoldMultiSaddle();
     void unfoldMultiSaddle(CriticalPoint& cp);
+    void unfoldBoundaryMultiSaddle(CriticalPoint& cp);
 
     void genCPNeighbor();
     void sortCPNeighbor(CriticalPoint&) const;
@@ -60,6 +61,7 @@ namespace msc2d{
     std::pair<size_t, size_t> getMinRangeAtSaddle(int curr_vid, int prev_vid);
     std::pair<size_t, size_t> getMinRangeAtJunction(int curr_vid, int prev_vid);
     bool isNormalSaddle(const CriticalPoint& cp) const;
+    int getNeighborIndex(const CriticalPoint& cp, int il_index) const;
  private:
     std::vector<WEdge> wedge_vec;
     std::vector<bool> junction_flag;
@@ -67,6 +69,7 @@ namespace msc2d{
     std::vector< std::vector<int> > out_vertices;
     std::map< std::pair<int, int>, std::vector<size_t> > edge_path_mp;
     std::map<size_t, int> path_side_record; //
+    std::vector< std::pair<int, int> > error_rule_vec;
 
     MSComplex2D& msc;
     meshlib::Mesh& mesh;

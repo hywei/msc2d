@@ -3,6 +3,7 @@
 #include "MeshKernel.h"
 #include "MeshInfo.h"
 #include "../util/utility.h"
+#include "../util/heap.h"
 #include <queue>
 #include <algorithm>
 #include <cmath>
@@ -10,6 +11,7 @@
 #include <fstream>
 #include <map>
 #include <set>
+#include <limits>
 using namespace std;
 
 namespace meshlib{
@@ -83,7 +85,6 @@ void MeshBasicOP::genVertAdjacentInfo()
   vert_adj_face_vec.clear(); vert_adj_face_vec.resize(vert_num);
   vert_adj_edge_vec.clear(); vert_adj_edge_vec.resize(vert_num);
 
-  MeshKernel& kernel = *(mesh.p_Kernel);
   for(size_t fid=0; fid < face_num; ++fid){
     const VertHandleArray& vh_vec = face_vec[fid].vert_handle_vec;
     for(size_t i=0; i<vh_vec.size(); ++i){
@@ -169,7 +170,7 @@ HalfEdgeHandle MeshBasicOP::getHalfEdgeHandle(VertHandle vh1, VertHandle vh2) co
   if(e.he_handle_2 != -1){
     const HalfEdge& curr_he = he_vec[e.he_handle_2];
     const HalfEdge& next_he = he_vec[curr_he.next_he_handle];
-    if(curr_he.vert_handle == vh2 && next_he.vert_handle == vh1) return e.he_handle_2;
+    if(curr_he.vert_handle == vh1 && next_he.vert_handle == vh2) return e.he_handle_2;
   }
   return -1;
 }
@@ -399,7 +400,7 @@ void MeshBasicOP::sortAdjacentInfo()
       EdgeHandle prev_eid = eh_vec[(idx+eh_vec.size()-1)%eh_vec.size()];
       EdgeHandle next_eid = eh_vec[idx];
       adj_verts[0] = next_vid; adj_verts[1] = prev_vid;
-      adj_edges[0] = next_eid; adj_verts[1] = prev_eid;
+      adj_edges[0] = next_eid; adj_edges[1] = prev_eid;
       continue;
     }
     
@@ -416,7 +417,7 @@ void MeshBasicOP::sortAdjacentInfo()
         if(Util::IsSetFlag(f.flag, BOUNDARY_FACE)){
           size_t idx = distance(vh_vec.begin(), find(vh_vec.begin(), vh_vec.end(), vid));
           assert(idx != vh_vec.size());
-          VertHandle prev_vid = vh_vec[ (idx+adj_num-1) % adj_num];
+          VertHandle prev_vid = vh_vec[ (idx+vh_vec.size()-1) % vh_vec.size()];
 
           bool flag = false;
           for(size_t j=0; j<adj_num; ++j){ if(j == k) continue;
@@ -525,6 +526,7 @@ void MeshBasicOP::genHalfEdgeDS()
     }
   }
   /// form outer boundary halfedge
+  vector<HalfEdgeHandle> bd_he_vec;
   for(size_t k=0; k<he_vec.size(); ++k){
     if(he_vec[k].oppo_he_handle == -1){
       HalfEdge& inner_he = he_vec[k];
@@ -534,6 +536,8 @@ void MeshBasicOP::genHalfEdgeDS()
       /// find previous out halfedge for this outer halfedge
       HalfEdgeHandle curr_he_handle = k;
       while(he_vec[prev_he_handle].oppo_he_handle != -1){
+        HalfEdge prev_he = he_vec[prev_he_handle];
+        if(he_vec[prev_he.oppo_he_handle].face_handle == -1) break;
         curr_he_handle = he_vec[prev_he_handle].oppo_he_handle;
         prev_he_handle = he_vec[curr_he_handle].prev_he_handle;
       }
@@ -541,18 +545,29 @@ void MeshBasicOP::genHalfEdgeDS()
       /// find next out halfedge for this outer halfedge
       curr_he_handle = k;
       while(he_vec[next_he_handle].oppo_he_handle != -1){
+        HalfEdge next_he = he_vec[next_he_handle];
+        if(he_vec[next_he.oppo_he_handle].face_handle == -1) break;
         curr_he_handle = he_vec[next_he_handle].oppo_he_handle;
         next_he_handle = he_vec[curr_he_handle].next_he_handle;
       }
 
       he_vec.push_back(HalfEdge(he_vec[inner_he.next_he_handle].vert_handle, inner_he.edge_handle,
-                              -1, prev_he_handle, next_he_handle, k));
+                              -1, next_he_handle, prev_he_handle, k));
       inner_he.oppo_he_handle = he_vec.size()-1;
       Edge& e = edge_vec[inner_he.edge_handle];
-      assert(e.vert_handle_1 != -1 && e.vert_handle_2 == -1);
-      e.vert_handle_2 = he_vec.size()-1;
+      assert(e.he_handle_1 != -1 && e.he_handle_2 == -1);
+      e.he_handle_2 = he_vec.size()-1;
+      bd_he_vec.push_back(he_vec.size()-1);
     }
   }
+
+  // get boundary he's prev/next he
+  for(size_t k=0; k<bd_he_vec.size(); ++k){
+    HalfEdge& he = he_vec[bd_he_vec[k]];
+    he.prev_he_handle = he_vec[he.prev_he_handle].oppo_he_handle;
+    he.next_he_handle = he_vec[he.next_he_handle].oppo_he_handle;
+  }
+
   //! generate face half edge info
   for(size_t k=0; k<face_vec.size(); ++k){
     Face& f = face_vec[k];
@@ -570,6 +585,7 @@ void MeshBasicOP::genHalfEdgeDS()
 }
 
 bool MeshBasicOP::getInnerFaces(const PATH& loop, FaceHandleArray& fh_vec) const{
+  fh_vec.clear();
   if(loop.size()<3 || loop[0] != loop[loop.size()-1]) return false;
   for(size_t k=0; k<loop.size(); ++k) {
     const Vert& vert = vert_vec[loop[k]];
@@ -591,6 +607,9 @@ bool MeshBasicOP::getInnerFaces(const PATH& loop, FaceHandleArray& fh_vec) const
 
   for(size_t k=0; k<loop.size()-1; ++k){
     HalfEdgeHandle hh = getHalfEdgeHandle(loop[k], loop[k+1]);
+    HalfEdgeHandle oppo_hh = he_vec[hh].oppo_he_handle;
+    if(bd_edge_set.find(hh) != bd_edge_set.end() &&
+       bd_edge_set.find(oppo_hh) != bd_edge_set.end()) continue;
     const HalfEdge& he = he_vec[hh];
     FaceHandle fh = he.face_handle;
     if(fh == -1) return false;
@@ -603,7 +622,10 @@ bool MeshBasicOP::getInnerFaces(const PATH& loop, FaceHandleArray& fh_vec) const
           if(bd_edge_set.find(hh_vec[k]) != bd_edge_set.end()) continue;
           HalfEdgeHandle oppo_hh = he_vec[hh_vec[k]].oppo_he_handle;
           FaceHandle fh = he_vec[oppo_hh].face_handle;
-          if(fh != -1 && faces.find(fh) != faces.end()) faces.insert(fh);
+          if(fh != -1 && faces.find(fh) == faces.end()) {
+            faces.insert(fh);
+            q.push(fh);
+          }
         }
       }// end while
     }
@@ -613,5 +635,77 @@ bool MeshBasicOP::getInnerFaces(const PATH& loop, FaceHandleArray& fh_vec) const
   fh_vec.assign(faces.begin(), faces.end());
   return true;
 }
+
+bool MeshBasicOP::getShortestPath(VertHandle start, VertHandle end,
+                                  PATH &path, const std::set<EdgeHandle> &edge_set) const{
+  path.clear();
+  if(start == end) path.push_back(start);
+
+#define INIFINITE_DIST (numeric_limits<double>::infinity())
+
+  map<int, double> vert_dist;
+  map<int, double>::iterator iter;
+  map<int, int> prev_vert;
+  prev_vert[end] = -1;
+  CHeap heap;
+  vert_dist[end] = 0.0;
+
+  Node* pNode = new Node;
+  pNode->v = 0.0;
+  pNode->type = end;
+  heap.insert(pNode);
+
+  bool flag = true;
+
+  while(!heap.heapEmpty()){
+    Node* pNode = heap.Remove();
+    VertHandle vh = pNode->type;
+    double vdist = vert_dist[vh];
+    const Coord& vc = mesh.getVertexCoord(vh);
+    const VertHandleArray& adj_vertices = vert_adj_vert_vec[vh];
+    for(size_t i=0; i<adj_vertices.size(); ++i){
+      VertHandle adj_vh = adj_vertices[i];
+      EdgeHandle eh = getEdgeHandle(vh, adj_vh);
+      if(edge_set.find(eh) == edge_set.end()) continue;
+      const Coord& _vc = mesh.getVertexCoord(adj_vertices[i]);
+      double edge_len = (vc-_vc).abs();
+      double adj_vdist = INIFINITE_DIST;
+      if( (iter = vert_dist.find(adj_vh)) != vert_dist.end()) adj_vdist = iter->second;
+      if(vdist + edge_len < adj_vdist){
+        vert_dist[adj_vh] = vdist + edge_len;
+        prev_vert[adj_vh] = vh;
+        int index = heap.heapFind(adj_vh);
+        if(index !=0){
+          heap.a[index]->v = vdist + edge_len;
+          heap.upheap(index);
+        }else{
+          Node* pNewNode = new Node;
+          pNewNode->v = vdist + edge_len;
+          pNewNode->type = adj_vh;
+          heap.insert(pNewNode);
+        }
+      }
+    }
+    delete pNode;
+    if(vh == start) { flag = true; break; }
+  }
+
+  while(!heap.heapEmpty()){
+    Node* pNode = heap.Remove();
+    delete pNode;
+  }
+
+  if(!flag) return false;
+
+  int curr_vid = start;
+  while(prev_vert[curr_vid] != -1){
+    path.push_back(curr_vid);
+    curr_vid = prev_vert[curr_vid];
+  }
+  path.push_back(end);
+  return true;
+}
+
+#undef INIFINITE_DIST
 
 }

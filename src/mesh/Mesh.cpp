@@ -60,6 +60,35 @@ const std::vector<VertHandle>& Mesh::getFaceVertices(FaceHandle fh) const
   return p_Kernel->getFaceArray()[fh].vert_handle_vec;
 }
 
+const EdgeHandleArray& Mesh::getFaceEdges(FaceHandle fh) const{
+  return p_Kernel->getFaceArray()[fh].edge_handle_vec;
+}
+
+const HalfEdgeHandleArray& Mesh::getFaceHalfEdges(FaceHandle fh) const{
+  return p_Kernel->getFaceArray()[fh].he_handle_vec;
+}
+
+const HalfEdgeArray& Mesh::getHalfEdgeArray() const{
+  return p_Kernel->getHEArray();
+}
+
+std::pair<VertHandle, VertHandle> Mesh::getEdgeVertices(EdgeHandle eh) const{
+  const Edge& e = p_Kernel->getEdgeArray()[eh];
+  return std::make_pair(e.vert_handle_1, e.vert_handle_2);
+}
+
+EdgeHandle Mesh::getEdgeHandle(VertHandle vh1, VertHandle vh2) const{
+  return p_BasicOP->getEdgeHandle(vh1, vh2);
+}
+
+HalfEdgeHandle Mesh::getHalfEdgeHandle(VertHandle vh1, VertHandle vh2) const{
+  return p_BasicOP->getHalfEdgeHandle(vh1, vh2);
+}
+
+bool Mesh::getInnerFaces(const PATH &loop, FaceHandleArray &fh_vec) const{
+  return p_BasicOP->getInnerFaces(loop, fh_vec);
+}
+
 bool Mesh::isBoundaryVertex(VertHandle vh) const { return p_Info->isBoundaryVertex(vh); }
 bool Mesh::isBoundaryFace(FaceHandle fh) const { return p_Info->isBoundaryFace(fh); }
 bool Mesh::isBoundaryEdge(EdgeHandle eh) const { return p_Info->isBoundaryEdge(eh); }
@@ -67,6 +96,11 @@ bool Mesh::isBoundaryEdge(EdgeHandle eh) const { return p_Info->isBoundaryEdge(e
 bool Mesh::isManifold() const
 {
   return p_Info->isManifold();
+}
+
+bool Mesh::getShortestPath(VertHandle vh1, VertHandle vh2,
+                           PATH &path, std::set<EdgeHandle> &edge_set) const{
+  return p_BasicOP->getShortestPath(vh1, vh2, path, edge_set);
 }
 
 }

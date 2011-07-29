@@ -30,8 +30,8 @@ bool MSComplex2D::setMesh(const string& file_name){
     if(mesh->isManifold()) cout << "YES" << endl;
     else cout << "NO" << endl;
 
-    const VertHandleArray& vh_vec = mesh->getAdjVertices(0);
-    for(size_t i=0; i<vh_vec.size(); ++i) cout << vh_vec[i] << " "; cout << endl;
+//    const VertHandleArray& vh_vec = mesh->getAdjVertices(41);
+//    for(size_t i=0; i<vh_vec.size(); ++i) cout << vh_vec[i] << " "; cout << endl;
   }
   return true;
 }
@@ -84,6 +84,7 @@ bool MSComplex2D::createMSComplex2D(double threshold /*=0.003*/){
 
   QPGenerator qp_generator(*this);
   qp_generator.genQuadPatch();
+  cout << "Create MSComplex Successful" << endl;
 }
 
 int MSComplex2D::cmpScalarValue(int vid1, int vid2) const{
@@ -145,6 +146,8 @@ bool MSComplex2D::saveMSComplex(const std::string& file_name) const
     return false;
   }
 
+  cout << "Save to " << file_name << endl;
+
   os << "# Critical Points : CP meshIndex type" << endl;
   for(size_t k=0; k<cp_vec.size(); ++k){
     os << "CP " << cp_vec[k].meshIndex;
@@ -172,12 +175,13 @@ bool MSComplex2D::saveMSComplex(const std::string& file_name) const
 ostream & operator << (std::ostream& os, const MSComplex2D& msc){
   const CriticalPointArray& cp_vec = msc.cp_vec;
   const IntegrationLineArray& il_vec = msc.il_vec;
-  
-  os << "# Critical Points : CP meshIndex type" << endl;  
+  const QuadPatchArray& qp_vec = msc.qp_vec;
+
+  os << "# Critical Points : CP meshIndex type" << endl;
   for(size_t k=0; k<cp_vec.size(); ++k){
     os << "CP " << cp_vec[k].meshIndex;
     if(cp_vec[k].type == MINIMAL) os << " MINIMAL" << endl;
-    else if(cp_vec[k].type == MAXIMAL) os << " MAXNIMAL" << endl;
+    else if(cp_vec[k].type == MAXIMAL) os << " MAXIMAL" << endl;
     else if(cp_vec[k].type == SADDLE) os << " SADDLE" << endl;
   }
 
@@ -185,12 +189,32 @@ ostream & operator << (std::ostream& os, const MSComplex2D& msc){
   for(size_t k=0; k<il_vec.size(); ++k){
     os << "IL " << il_vec[k].startIndex << " " << il_vec[k].endIndex << " ";
     const PATH& path = il_vec[k].path;
+    if(path.size() == 0) { os << endl; continue; }
     for(size_t i=0; i<path.size()-1; ++i){
       os << path[i];
-      if(i%10 == 0) os << "\\";
+      if((i+1)%10 == 0 ) os << " \\\n";
       else os << " ";
     }
     os << path[path.size()-1] << endl;
+  }
+
+  os << "# Patchs: " << endl;
+  for(size_t k=0; k<qp_vec.size(); ++k){
+    os << "QP ";
+    const QuadPatch& qp = qp_vec[k];
+    const vector<int>& il_index_vec = qp.boundaryIntegrationLineIndex;
+    if(il_index_vec.size() == 0) continue;
+    for(size_t i=0; i<il_index_vec.size()-1; ++i){
+      os << il_index_vec[i] << " ";
+    }
+    os << il_index_vec[il_index_vec.size()-1] << endl;
+    if(qp.face.size() == 0) { os << endl; continue; }
+    for(size_t i=0; i<qp.face.size()-1; ++i){
+      os << qp.face[i];
+      if((i+1)%10 == 0) os << " \\\n";
+      else os << " ";
+    }
+    os << qp.face[qp.face.size()-1] << endl;
   }
   return os;
 }

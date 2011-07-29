@@ -188,6 +188,7 @@ bool MeshIO::OpenObjFile(const std::string& filename)
   int len, mark, c, v, n, t;
 
   while(std::getline(ifs,line)){
+    if(line.empty()) continue;
     switch(line[0]){
       case '#':	break;
       case 'v':	/* v, vn , vt*/
@@ -198,12 +199,12 @@ bool MeshIO::OpenObjFile(const std::string& filename)
           stream.str(""); stream.clear(); 
           ++vn;
         }else if(s[1] == 'n') {
-          stream >> vert_vec[vn].normal[0] >> vert_vec[vn].normal[1]>> vert_vec[vn].normal[2];
-          stream.str(""); stream.clear();
-          ++vt_num;
+//          stream >> vert_vec[vn].normal[0] >> vert_vec[vn].normal[1]>> vert_vec[vn].normal[2];
+//          stream.str(""); stream.clear();
+          ++vn_num;
         }else if(s[1] == 't') {
           //TODO: add vertex texture coordinate
-          ++vn_num;
+          ++vt_num;
         }
         break;
 

@@ -3,6 +3,7 @@
 
 #include <boost/shared_ptr.hpp>
 #include <string>
+#include <set>
 #include "../common/types.h"
 #include "MeshElement.h"
 
@@ -35,12 +36,25 @@ namespace meshlib{
     const VertHandleArray& getAdjVertices(VertHandle vh) const;
     const FaceHandleArray& getAdjFaces(VertHandle vh) const;
     const VertHandleArray& getFaceVertices(FaceHandle fh) const;
+    const EdgeHandleArray& getFaceEdges(FaceHandle fh) const;
+    const HalfEdgeHandleArray& getFaceHalfEdges(FaceHandle fh) const;
+
+    const HalfEdgeArray& getHalfEdgeArray() const;
+
+    std::pair<VertHandle, VertHandle> getEdgeVertices(EdgeHandle eh) const;
+
+    EdgeHandle getEdgeHandle(VertHandle vh1, VertHandle vh2) const;
+    HalfEdgeHandle getHalfEdgeHandle(VertHandle vh1, VertHandle vh2) const;
+    bool getInnerFaces(const PATH& loop, FaceHandleArray& fh_vec) const;
 
     bool isBoundaryVertex(VertHandle vh) const;
     bool isBoundaryFace(FaceHandle fh) const;
     bool isBoundaryEdge(EdgeHandle eh) const;        
 
     bool isManifold() const;
+
+    bool getShortestPath(VertHandle vh1, VertHandle vh2,
+                         PATH& path, std::set<EdgeHandle>& edge_set) const;
  private:            
     boost::shared_ptr<MeshKernel> p_Kernel;
     boost::shared_ptr<MeshIO> p_IO;
