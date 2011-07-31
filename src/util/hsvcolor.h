@@ -5,6 +5,8 @@
 #ifndef CHSVCOLOR
 #define CHSVCOLOR
 
+namespace meshlib{
+
 class CHSVColor  
 {
 public:
@@ -19,5 +21,5 @@ public:
 	virtual ~CHSVColor();
 
 };
-
+}
 #endif

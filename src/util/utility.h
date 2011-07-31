@@ -4,6 +4,7 @@
 #include <algorithm>
 #include <iostream>
 
+namespace meshlib{
 
 class Util
 {
@@ -41,3 +42,5 @@ public:
       return find(v.begin(), v.end(), x) != v.end();
     }
 };
+
+}

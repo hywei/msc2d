@@ -5,8 +5,8 @@
 
 using namespace std;
 namespace msc2d{
-Simplifor::Simplifor(MSComplex2D& _msc):
-    msc(_msc), cp_vec(_msc.cp_vec), il_vec(_msc.il_vec){}
+Simplifor::Simplifor(MSComplex2D& _msc, bool _rm_deg_sad):
+    msc(_msc), cp_vec(_msc.cp_vec), il_vec(_msc.il_vec), remove_deg_sad(_rm_deg_sad){}
 Simplifor::~Simplifor(){}
 
 void Simplifor::calPersistence(){
@@ -46,9 +46,15 @@ void Simplifor::simplify(double threshold){
     size_t il_index = min_im->first;
     persistence_map.erase(il_index);
     cancel(il_index);
-
   }
 
+  if(remove_deg_sad)
+    removeDegenerateSaddle();
+
+  for(size_t i=0; i<cp_vec.size(); ++i){
+    if(cp_vec[i].neighbor.size() == 0) removed_cp_flag[i] = true;
+  }
+  
   update();
   refinePath();
 }
@@ -70,9 +76,7 @@ bool Simplifor::cancel(int cancelIL_index){
 
   if(s.neighbor.size() == 1) { removeSad(scp_index); return false; }
 
-  if(cancelIL_index == 5265){
-   // cout << "Debug" << endl;
-  }
+
   int cancel_nb_idx = getILIndexInNeighbor(s, cancelIL_index);
 
   int bridgeIL_index;
@@ -115,7 +119,10 @@ bool Simplifor::cancel(int cancelIL_index){
         }
       }
     }
-    if(mid_il_idx == -1) return false;
+    if(mid_il_idx == -1) {
+      removeSad(scp_index);
+      return false;
+    }
     return cancel(mid_il_idx); 
   }
   
@@ -249,6 +256,31 @@ int Simplifor::getILIndexInNeighbor(const CriticalPoint& cb, int il_index) const
 bool Simplifor::isAscendingIL(const IntegrationLine& il) const{
   int vid1 = il.path[0], vid2 = il.path[1];
   return msc.cmpScalarValue(vid1, vid2) == 1;
+}
+
+void Simplifor::removeDegenerateSaddle(){
+  for(size_t i=0; i<cp_vec.size(); ++i){
+    if(!removed_cp_flag[i] && isDegenerateSaddle(cp_vec[i])){
+      removeSad(i);
+    }
+  }
+}
+
+bool Simplifor::isDegenerateSaddle(const CriticalPoint& cp) const{
+  if(cp.type != SADDLE) return false;
+  for(size_t i=0; i<cp.neighbor.size(); ++i){
+    const IntegrationLine& il= il_vec[cp.neighbor[i].integrationLineIndex];
+    size_t j = (i+1)%cp.neighbor.size();
+    if(i==j) continue;
+    const CriticalPoint& _cp = cp_vec[cp.neighbor[j].pointIndex];
+    if(_cp.neighbor.size() == 1){
+      size_t k = (j+1)%cp.neighbor.size();
+      if(k==i) continue;
+      const IntegrationLine& _il = il_vec[cp.neighbor[k].integrationLineIndex];
+      if(il.endIndex == _il.endIndex) return true;
+    }
+  }
+  return false;
 }
 
 } // end namespace

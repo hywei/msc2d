@@ -10,7 +10,6 @@ QPGenerator::QPGenerator(MSComplex2D& _msc): msc(_msc){}
 QPGenerator::~QPGenerator(){}
 
 void QPGenerator::genQuadPatch(){
-  test_flag = true;
   cout << "Generator Quad Patchs" << endl;
   formed_patchs.clear();
   face_patch_index_mp.clear();
@@ -31,7 +30,7 @@ void QPGenerator::genQuadPatch(){
   }
   genTriPatch();
   cout << "Generator " << msc.qp_vec.size() << " quad patchs" << endl;
-
+  genILNeighbor();
 }
 
 void QPGenerator::genMMSadMapping(){
@@ -109,7 +108,6 @@ void QPGenerator::genQuadPatch(size_t sad_cp_idx){
 
 void QPGenerator::genTriPatch() {
   for(size_t i=0; i<tri_patch_cp_index_vec.size(); ++i){
-    if(!test_flag) continue;
     size_t il_index1 = tri_patch_il_index_vec[i].first;
     size_t il_index2 = tri_patch_il_index_vec[i].second;
     const IntegrationLine& il1 = msc.il_vec[il_index1];
@@ -281,6 +279,8 @@ bool QPGenerator::getInnerFaces(const PATH &loop, std::vector<int>& fh_vec) cons
   for(size_t k=0; k<loop.size()-1; ++k) {
     HalfEdgeHandle hh = msc.mesh->getHalfEdgeHandle(loop[k], loop[k+1]);
     HalfEdgeHandle oppo_hh = he_vec[hh].oppo_he_handle;
+    if(bd_edge_set.find(hh) != bd_edge_set.end() &&
+       bd_edge_set.find(oppo_hh) != bd_edge_set.end()) continue;
     int fh1 = he_vec[hh].face_handle;
     int fh2 = he_vec[oppo_hh].face_handle;
     if(faces.find(fh1) != faces.end() && faces.find(fh2) != faces.end()){
@@ -292,6 +292,22 @@ bool QPGenerator::getInnerFaces(const PATH &loop, std::vector<int>& fh_vec) cons
   fh_vec.clear(); fh_vec.resize(faces.size());
   fh_vec.assign(faces.begin(), faces.end());
   return true;
+}
+
+void QPGenerator::genILNeighbor(){
+  for(size_t i=0; i<msc.qp_vec.size(); ++i){
+    const QuadPatch& p = msc.qp_vec[i];
+    for(size_t k=0; k<p.boundaryIntegrationLineIndex.size(); ++k){
+      IntegrationLine& il = msc.il_vec[p.boundaryIntegrationLineIndex[k]];
+      il.quadPatchIndex.push_back(i);
+    }
+  }
+  for(size_t i=0; i<msc.il_vec.size(); ++i){
+    const IntegrationLine& il = msc.il_vec[i];
+    if(il.quadPatchIndex.size() > 2) {
+      cerr <<"Warning: too many neighbor patchs for il " << i << endl;
+    }
+  }
 }
 
 } // end namespace 

@@ -11,7 +11,7 @@ namespace msc2d{
 
   class CPFinder{
  public:
-    CPFinder(MSComplex2D& _msc);
+    CPFinder(MSComplex2D& _msc, bool _rm_boundary_saddle=false);
     ~CPFinder();
 
     bool findCriticalPoints();
@@ -26,6 +26,7 @@ namespace msc2d{
     const meshlib::Mesh& mesh;
     const std::vector<double>& sf;
     MSComplex2D& msc;
+    bool rm_boundary_saddle;
   };
 } // end namespace
 #endif

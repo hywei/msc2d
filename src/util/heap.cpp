@@ -10,6 +10,8 @@
 // Construction/Destruction
 //////////////////////////////////////////////////////////////////////
 
+namespace meshlib{
+
 CHeap::CHeap()
 {
 	a = new Node*[MAX_NODE];
@@ -195,4 +197,5 @@ int CHeap::heapFindPair(int type, int type2)
             return i;
     }
     return 0;
+}
 }

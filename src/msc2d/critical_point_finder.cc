@@ -7,8 +7,9 @@ namespace msc2d{
 using namespace std;
 using namespace meshlib;
 
-CPFinder::CPFinder(MSComplex2D& _msc):
-    msc(_msc), mesh(*_msc.mesh), sf(_msc.scalar_field){}
+CPFinder::CPFinder(MSComplex2D& _msc, bool _rm_boundary_saddle):
+    msc(_msc), mesh(*_msc.mesh), sf(_msc.scalar_field),
+  rm_boundary_saddle(_rm_boundary_saddle){}
 CPFinder::~CPFinder(){}
 
 bool CPFinder::resolveFlatRegion(){
@@ -87,6 +88,7 @@ CriticalPointType CPFinder::getPointType(int vid) const{
     return msc.cmpScalarValue(vid, adj_vertices[0]) == 1 ? MAXIMAL : MINIMAL;
   }else if(alter_num == 2) return REGULAR;
   else {
+    if(mesh.isBoundaryVertex(vid) && rm_boundary_saddle) return REGULAR;
     if(alter_num != 4) cout << "This is a multi-saddle " << vid << endl;
     return SADDLE;
   }

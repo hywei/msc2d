@@ -1,6 +1,8 @@
 #include "utility.h"
 #include <cassert>
 
+namespace meshlib{
+
 void Util::ResolveFileName(const std::string& filename, std::string& file_path, std::string& file_title, std::string& file_ext)
 {
     //! TODO: add linux . .. tracing
@@ -41,4 +43,5 @@ void Util::MakeUpper(std::string& str)
         char& ch = str[i];
         if(ch >= 'a' && ch <= 'a') ch = ch - 'a' + 'A';
     }
+}
 }

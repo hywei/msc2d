@@ -32,7 +32,7 @@ namespace msc2d{
 
     
  public:
-    ILTracer(MSComplex2D& );
+    ILTracer(MSComplex2D&);
     ~ILTracer();
 
     bool traceIntegrationLine();

@@ -10,6 +10,7 @@
 #include <sys/times.h> 
 #endif
 
+namespace meshlib{
 //______________________________________________________________________
 class SystemStopwatch {
 public :
@@ -42,6 +43,7 @@ private:
 #endif    
 } ;
 
+}
 #endif
 
 

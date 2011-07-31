@@ -4,7 +4,7 @@
 
 //_________________________________________________________
 
-
+namespace meshlib{
 SystemStopwatch::SystemStopwatch() {
 #ifdef WIN32
 	start_ = GetTickCount() ;
@@ -56,4 +56,5 @@ void SystemStopwatch::print_elapsed_time() {
 		<< double(end.tms_stime - start_.tms_stime) / 100.0 
 		<< std::endl ;    
 #endif    
+}
 }

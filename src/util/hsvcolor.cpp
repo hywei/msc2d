@@ -10,6 +10,7 @@ static char THIS_FILE[]=__FILE__;
 #define new DEBUG_NEW
 #endif
 
+namespace meshlib{
 //////////////////////////////////////////////////////////////////////
 // Construction/Destruction
 //////////////////////////////////////////////////////////////////////
@@ -151,4 +152,6 @@ float CHSVColor::minofthree(float a, float b, float c)
 		else min = c;
 	}
 	return min;
+}
+
 }

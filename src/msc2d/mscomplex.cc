@@ -3,6 +3,7 @@
 #include "integration_line_tracer.h"
 #include "quad_patch_generator.h"
 #include "msc2d_simplification.h"
+#include "dual_mscomplex_generator.h"
 #include "../mesh/Mesh.h"
 #include "../common/macro.h"
 #include <fstream>
@@ -79,12 +80,41 @@ bool MSComplex2D::createMSComplex2D(double threshold /*=0.003*/){
   ILTracer il_tracer(*this);
   il_tracer.traceIntegrationLine();
 
-  Simplifor simplifor(*this);
+  Simplifor simplifor(*this, true);
   simplifor.simplify(threshold);
 
   QPGenerator qp_generator(*this);
   qp_generator.genQuadPatch();
   cout << "Create MSComplex Successful" << endl;
+  return true;
+}
+
+bool MSComplex2D::createDualMSComplex2D(const string& file_name, double threshold /*=0.003*/) {
+  if(!checkMeshAndScalarField()){
+    return false;
+  }
+  cp_vec.clear(); il_vec.clear(); qp_vec.clear();
+
+  CPFinder cp_finder(*this);
+  cp_finder.findCriticalPoints();
+  cp_finder.printCriticalPointsInfo();
+
+  ILTracer il_tracer(*this);
+  il_tracer.traceIntegrationLine();
+
+  Simplifor simplifor(*this, true);
+  simplifor.simplify(threshold);
+
+  QPGenerator qp_generator(*this);
+  qp_generator.genQuadPatch();
+  cout << "Create MSComplex Successful" << endl;
+
+
+  DualGenerator dual_generator(*this);
+  dual_generator.generateDualPatch();
+//  dual_generator.saveDualMSComplex(file_name);
+  dual_generator.saveQuadFile(file_name);
+  return true;
 }
 
 int MSComplex2D::cmpScalarValue(int vid1, int vid2) const{

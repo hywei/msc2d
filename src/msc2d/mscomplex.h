@@ -69,6 +69,8 @@ namespace msc2d{
     bool loadMSComplex(const std::string& file_name);
     bool saveMSComplex(const std::string& file_name) const;
 
+    bool createDualMSComplex2D(const std::string& file_name,
+                               double threshold = 0.003);
  private:
     /*
       Compair two vertices' scalar
@@ -85,7 +87,8 @@ namespace msc2d{
 
     CriticalPointArray cp_vec;
     IntegrationLineArray il_vec;
-    QuadPatchArray qp_vec;
+    QuadPatchArray qp_vec; // primal patch array
+    QuadPatchArray dp_vec; // dual patch array
 
     // vertex priority for flat region
     std::map<int, int> vert_priority_mp;
@@ -96,6 +99,7 @@ namespace msc2d{
     friend class ILTracer;
     friend class Simplifor;
     friend class QPGenerator;
+    friend class DualGenerator;
 
     friend std::istream & operator >> (std::istream&, MSComplex2D&);
     friend std::ostream & operator << (std::ostream&, const MSComplex2D&);

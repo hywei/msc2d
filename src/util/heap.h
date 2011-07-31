@@ -10,6 +10,8 @@
 #pragma once
 #endif // _MSC_VER > 1000
 
+namespace meshlib{
+
 const int MAX_NODE	= 65535;
 
 typedef struct node       Node;
@@ -53,5 +55,5 @@ public:
 	virtual ~CHeap();
 
 };
-
+}
 #endif // !defined(AFX_HEAP_H__D95FA3CF_0DC1_4A82_9DE2_B872CF7EEAFA__INCLUDED_)

@@ -22,6 +22,8 @@ namespace msc2d{
 
     void genTriPatch();
     bool getInnerFaces(const PATH& loop, std::vector<int>& face_vec) const;
+
+    void genILNeighbor();
  private:
     MSComplex2D& msc;
     const meshlib::Mesh& mesh;
@@ -34,6 +36,5 @@ namespace msc2d{
 
     std::vector< std::pair<size_t, size_t> > tri_patch_il_index_vec;
     std::vector< size_t > tri_patch_cp_index_vec;
-    bool test_flag;
   };
 }
