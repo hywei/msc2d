@@ -27,7 +27,7 @@ int main(int argc, char** argv)
     fout << msc;
     string dual_msc_fn = sf_filename;
     dual_msc_fn.replace(idx, ".sf", ".quad");
-    msc.createDualMSComplex2D(dual_msc_fn, 0.003);
+   // msc.createDualMSComplex2D(dual_msc_fn, 0.003);
   }
 
   return 0;

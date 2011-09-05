@@ -178,8 +178,10 @@ bool ILTracer::traceDescendingPath(){
   cout << "Trace descending path" << endl;
   for(vector<CriticalPoint>::iterator it=msc.cp_vec.begin(); it!=msc.cp_vec.end(); ++it){
     if(it->type == SADDLE){
+      if(it->meshIndex == 192)
       const vector<pair<size_t, size_t> >& min_ranges = wedge_vec[it->meshIndex].min_ranges;
       for(size_t k=0; k<min_ranges.size(); ++k){
+       // cout << it->meshIndex << " " << k << endl;
         path_side_record.clear();
         int prev_vid = it->meshIndex;
         int curr_vid = getDescendingPathSecondVert(*it, k);
@@ -266,6 +268,10 @@ pair<size_t, size_t> ILTracer::getMinRangeAtJunction(int curr_vid, int prev_vid)
       const vector<size_t>& path_ids = edge_path_mp[make_pair(adj_vid, curr_vid)];
       assert(path_ids.size() !=0);
       map<size_t, int>::const_iterator im = path_side_record.find(path_ids[0]);
+      if(im == path_side_record.end()) {
+        cout << curr_vid <<" " << prev_vid << endl;
+        //        return make_pair(-1, -1);
+      }
       assert(im != path_side_record.end());
       if(im->second == -1) { second = next(curr_vid, k); break;}
       else first = k;
@@ -295,6 +301,15 @@ pair<size_t, size_t> ILTracer::getMinRangeAtSaddle(int sadd_vid, int prev_vid) {
     if(side !=0) break;
   }
   assert(side != 0);
+  for(size_t k=max_range.first; k!=max_range.second; k=next(sadd_vid, k)){
+    int adj_vid = adj_vertices[k];
+    if(Util::isIn(in_verts, adj_vid)){
+      const vector<size_t>& path_ids = edge_path_mp[make_pair(adj_vid, sadd_vid)];
+      assert(path_ids.size() > 0);
+      for(size_t i=0; i<path_ids.size(); ++i)
+        path_side_record[path_ids[i]] = side;
+    }
+  }
   int min_range_idx(-1);
   size_t max_range_num = wedge_vec[sadd_vid].max_ranges.size();
   size_t min_range_num = wedge_vec[sadd_vid].min_ranges.size();

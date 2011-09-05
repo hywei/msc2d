@@ -1,0 +1,44 @@
+Introduction
+============
+
+msc2d is a program library to create the Morse-Smale complex for a
+given manifold and a scalar field. It is a partly algorithm implement
+base on the paper "Hierarchical Morse-Smale Complexes for Piecewise 
+Linear 2-Manifolds". 
+
+Hierarchy
+===========
+
+src/
+msc2d source code
+
+doc/
+library document [todo list]
+
+data/
+test data
+
+Build 
+===========
+
+build requirement:
+[cmake](version 2.4 or latter)
+[boost](version 1.36 or latter)
+
+
+Explaination
+============
+
+The input data is two files: a mainfold mesh(just support obj file now)
+and a scalar field file, and the output is a msc file.
+
+File format:
+-----------
+
+obj file:(please reference http://en.wikipedia.org/wiki/Wavefront_.obj_file)
+
+scalar field file: 
+first line: an integer N ( the number of vertices for the mesh)
+following N lines, each is : a scalar value
+
+msc file:(please reference src/msc2d/mscomplex.cc)

@@ -80,11 +80,11 @@ bool MSComplex2D::createMSComplex2D(double threshold /*=0.003*/){
   ILTracer il_tracer(*this);
   il_tracer.traceIntegrationLine();
 
-  Simplifor simplifor(*this, true);
-  simplifor.simplify(threshold);
+//  Simplifor simplifor(*this, true);
+//  simplifor.simplify(threshold);
 
-  QPGenerator qp_generator(*this);
-  qp_generator.genQuadPatch();
+//  QPGenerator qp_generator(*this);
+//  qp_generator.genQuadPatch();
   cout << "Create MSComplex Successful" << endl;
   return true;
 }
